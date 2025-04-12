@@ -2,21 +2,30 @@
 //  to see how to ping, extract info and what will happen if adress is not valid
 
 // references
-// https://nsrc.org/wrc/materials/src/ping.c
+// original ping.c
 // https://github.com/amitsaha/ping/blob/master/ping.c
+// same as before but with syntax highlight https://gist.github.com/bugparty/ccba5744ba8f1cece5e0
+//
+// simpler ping implementation
+// https://nsrc.org/wrc/materials/src/ping.c
 
 
 #include <stdio.h>
+#include <sys/time.h>
+
+#include <sys/types.h>
+#include <sys/socket.h>
+
 #include <stdlib.h>
 #include <string.h>
-
 #include <netdb.h>
 #include <netinet/in.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <arpa/inet.h>
+#include <netinet/ip_icmp.h>
 #include <unistd.h>
 
+
+#define MAX_PACKET  1024
+#define ODDBYTE(v) htons((unsigned short)(v) <<8)
 
 // //  ping a given ip
 // // will send a few packets ~4
@@ -58,6 +67,38 @@
 
 // }
 
+unsigned short
+in_cksum(const unsigned short *addr, register int len, unsigned short csum)
+{
+	register int nleft = len;
+	const unsigned short *w = addr;
+	register unsigned short answer;
+	register int sum = csum;
+
+	/*
+	 *  Our algorithm is simple, using a 32 bit accumulator (sum),
+	 *  we add sequential 16 bit words to it, and at the end, fold
+	 *  back all the carry bits from the top 16 bits into the lower
+	 *  16 bits.
+	 */
+	while (nleft > 1)  {
+		sum += *w++;
+		nleft -= 2;
+	}
+
+	/* mop up an odd byte, if necessary */
+	if (nleft == 1)
+		sum += ODDBYTE(*(unsigned char *)w); /* le16toh() may be unavailable on old systems */
+
+	/*
+	 * add back carry outs from top 16 bits to low 16 bits
+	 */
+	sum = (sum >> 16) + (sum & 0xffff);	/* add hi 16 to low 16 */
+	sum += (sum >> 16);			/* add carry */
+	answer = ~sum;				/* truncate to 16 bits */
+	return (answer);
+}
+
 // create socket
 // get network ip from user
 // will be extracted different file
@@ -76,6 +117,9 @@ int main(int argc, char **argv)
         perror("Invalid ip addr\n");
         exit(-1);
     }
+    // assign a port
+    // to be rethinked - port can be blocked and plan will go kaput
+    dst.sin_port = htons(1025);
 
     // crate icmp socket
     sock = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
@@ -84,6 +128,121 @@ int main(int argc, char **argv)
         exit(-2);
     }
     printf("created socket\n");
+
+    // construct icmp packet, same way as in ping.c
+    // reserve memory for packet
+    static unsigned char packet[MAX_PACKET];
+
+    // create icmp packet struct
+    struct icmphdr *icmp_p = (struct icmphdr *) packet;
+
+    int i,cc;
+    int datalen = 56;
+    struct timezone tz;
+
+    // fill in packet info
+    struct timeval *tp = (struct timeval *) &packet[8];
+    unsigned char *datap = &packet[8+sizeof(struct timeval)];
+    icmp_p->type = ICMP_ECHO;
+    icmp_p->code = 0;
+    icmp_p->checksum=0;
+
+    // get time for rtt
+    gettimeofday(tp, &tz);
+
+    // calculate checksum
+    cc = datalen +8;
+    icmp_p->checksum = in_cksum(icmp_p, cc, 0);
+
+    // skip 8 bytes - idk why - is in ping.c
+    // seems related to timeval
+    for(i=8; i<datalen;i++){
+        *datap++ = i;
+    }
+
+    // send packet
+    i = sendto(sock, packet, cc, 0, &dst, sizeof(dst));
+
+    // try to read reply
+    struct msghdr msg;
+    int polling;
+    char addrbuf[128];
+    // io vector
+    // the more i write in c the more i appreciate c++
+    struct iovec iov;
+
+    // turn addrbuff to vector
+    iov.iov_base = addrbuf;
+    // TODO: change to more space efficient version
+    // that is - hard limit num of sent bytes to some small number
+    // preferably just to transmit timeval
+    iov.iov_len = MAX_PACKET;
+
+    // clear memory taken by msg of garbage
+    memset(&msg, 0 , sizeof(msg));
+
+    msg.msg_name = addrbuf;
+    msg.msg_namelen = sizeof(addrbuf);
+    /* TODO: read this
+     * https://www.safaribooksonline.com/library/view/linux-system-programming/9781449341527/ch04.html
+     and here is msghdr source
+     https://docs.huihoo.com/doxygen/linux/kernel/3.7/include_2linux_2socket_8h_source.html#l00050
+     */
+
+    // assign vector to message struct
+    msg.msg_iov = &iov;
+    // ?? 1? why not iov.iov_len
+    // to future me - it is len of array of vectors
+    msg.msg_iovlen = 1;
+
+    // blocking wait on response
+    polling = MSG_WAITALL;
+    // TODO -rename vars to be more readable
+    // cc just says nothing
+    cc = recvmsg(sock, &msg, polling);
+
+    if (cc < 0){
+        perror("Error in recvmsg");
+        exit(1);
+    }
+    // in github/amitsaha/ping __u8 is used instead of uint8_t
+    // but answer to this stack question says its too old and unportable to use: https://stackoverflow.com/questions/16232557/difference-between-u8-and-uint8-t
+    uint8_t * buf = msg.msg_iov->iov_base;
+    struct icmphdr *icmp_reply;
+    icmp_reply = (struct icmphdr *)buf;
+    // check checksum
+    if(in_cksum((unsigned short *)icmp_reply, cc, 0)){
+        perror("Recieved bad checksum");
+        exit(1);
+    }
+
+    // TO READ ON:
+    /* Note that we don't have to check the reply ID to match that whether
+     * the reply is for us or not, since we are using IPPROTO_ICMP.
+     * See https://lwn.net/Articles/443051/ ping_v4_lookup()
+     * If we were using a RAW socket, we would need to do that.
+     * */
+    struct sockaddr_in *from = msg.msg_name;
+
+    // calc triptime
+    // to be studied
+    // look at modern ping perhaps?
+    // icmp_hdr does not have data fiels
+    // will do this when ping works
+    // or drop the idea entirely
+    // tp = (struct timeval *)&icmp_reply->
+
+    if(icmp_reply->type == ICMP_ECHOREPLY){
+        // print ping reply
+        printf("ICMP code: %d\n", icmp_reply->code);
+        printf("ICMP type %d\n", icmp_reply->type);
+        printf("rply of %d bytes recieved\n", cc);
+        printf("icmp sequence: %u\n", ntohs(icmp_reply->un.echo.sequence));
+    }
+
+
+    // TODO: napisać promotora jak własny musi być ping -
+    //  czy mam sie męczyć z własną implementacja czy moge zmodyfikować oryginał czy mam użyć exec/skryptu
 
     close(sock);
     printf("closed socket\n");
