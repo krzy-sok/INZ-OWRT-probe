@@ -23,6 +23,8 @@
 #include <netinet/ip_icmp.h>
 #include <unistd.h>
 
+#include <arpa/inet.h>
+
 
 #define MAX_PACKET  1024
 #define ODDBYTE(v) htons((unsigned short)(v) <<8)
@@ -152,7 +154,7 @@ int main(int argc, char **argv)
 
     // calculate checksum
     cc = datalen +8;
-    icmp_p->checksum = in_cksum(icmp_p, cc, 0);
+    icmp_p->checksum = in_cksum((unsigned short *)icmp_p, cc, 0);
 
     // skip 8 bytes - idk why - is in ping.c
     // seems related to timeval
@@ -222,12 +224,14 @@ int main(int argc, char **argv)
      * See https://lwn.net/Articles/443051/ ping_v4_lookup()
      * If we were using a RAW socket, we would need to do that.
      * */
-    struct sockaddr_in *from = msg.msg_name;
+
+    // address of our correspondent
+    // struct sockaddr_in *from = msg.msg_name;
 
     // calc triptime
     // to be studied
     // look at modern ping perhaps?
-    // icmp_hdr does not have data fiels
+    // icmp_hdr does not have data field
     // will do this when ping works
     // or drop the idea entirely
     // tp = (struct timeval *)&icmp_reply->
