@@ -69,21 +69,19 @@ int main(int argc, char **argv)
 
     if(argc < 2){
         printf("Ip address needed\n");
-        exit(1);
+        exit(-1);
     }
     // check if given ip is valid
-    printf("%s\n", argv[1]);
     if (inet_aton(argv[1], &dst.sin_addr) == 0){
         perror("Invalid ip addr\n");
-        exit(2);
+        exit(-1);
     }
 
     // crate icmp socket
     sock = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
-    printf("%d\n", sock);
     if(sock < 0){
         perror("Error crating socket\n");
-        exit(-1);
+        exit(-2);
     }
     printf("created socket\n");
 
