@@ -213,10 +213,11 @@ int main(int argc, char **argv)
     struct icmphdr *icmp_reply;
     icmp_reply = (struct icmphdr *)buf;
     // check checksum
-    if(in_cksum((unsigned short *)icmp_reply, cc, 0)){
-        perror("Recieved bad checksum");
-        exit(1);
-    }
+    int csfailed = in_cksum((unsigned short *)icmp_reply, cc, 0);
+    // if(csfailed){
+    //     perror("Recieved bad checksum");
+    //     exit(1);
+    // }
 
     // TO READ ON:
     /* Note that we don't have to check the reply ID to match that whether
@@ -236,6 +237,8 @@ int main(int argc, char **argv)
     // or drop the idea entirely
     // tp = (struct timeval *)&icmp_reply->
 
+    printf("checksum: %d\n", csfailed);
+    printf("icmp type: %d\n", icmp_reply->type);
     if(icmp_reply->type == ICMP_ECHOREPLY){
         // print ping reply
         printf("ICMP code: %d\n", icmp_reply->code);
