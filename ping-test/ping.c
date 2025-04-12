@@ -67,26 +67,25 @@ int main(int argc, char **argv)
     // struct sockaddr_in source = {.sin_family = AF_INET};
     struct sockaddr_in dst;
 
-    // if(argc < 2){
-    //     printf("Ip address needed\n");
-    //     exit(1);
-    // }
-    // heck if given ip is valid
-    if (inet_aton("127.0.0.1", &dst.sin_addr) == 0){
+    if(argc < 2){
+        printf("Ip address needed\n");
+        exit(1);
+    }
+    // check if given ip is valid
+    printf("%s\n", argv[1]);
+    if (inet_aton(argv[1], &dst.sin_addr) == 0){
         perror("Invalid ip addr\n");
         exit(2);
     }
-    // dst.sin_port
+
     // crate icmp socket
-    sock = socket(AF_INET, SOCK_DGRAM, 0);
-    if(sock == -1){
+    sock = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+    printf("%d\n", sock);
+    if(sock < 0){
         perror("Error crating socket\n");
         exit(-1);
     }
     printf("created socket\n");
-    // if (getsockname(sock, (struct sockaddr*)&source, &alen ) == -1){
-    //     pe
-    // }
 
     close(sock);
     printf("closed socket\n");
