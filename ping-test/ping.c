@@ -121,7 +121,7 @@ int main(int argc, char **argv)
     }
     // assign a port
     // to be rethinked - port can be blocked and plan will go kaput
-    dst.sin_port = htons(1025);
+    // dst.sin_port = htons(1025);
 
     // crate icmp socket
     sock = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
@@ -138,32 +138,33 @@ int main(int argc, char **argv)
     // create icmp packet struct
     struct icmphdr *icmp_p = (struct icmphdr *) packet;
 
-    int i,cc;
+    int i,sent_len;
     int datalen = 56;
-    struct timezone tz;
+    // struct timezone tz;
 
     // fill in packet info
-    struct timeval *tp = (struct timeval *) &packet[8];
-    unsigned char *datap = &packet[8+sizeof(struct timeval)];
+    // struct timeval *tp = (struct timeval *) &packet[8];
+    // unsigned char *datap = &packet[8+sizeof(struct timeval)];
     icmp_p->type = ICMP_ECHO;
     icmp_p->code = 0;
     icmp_p->checksum=0;
 
     // get time for rtt
-    gettimeofday(tp, &tz);
+    // gettimeofday(tp, &tz);
 
     // calculate checksum
-    cc = datalen +8;
-    icmp_p->checksum = in_cksum((unsigned short *)icmp_p, cc, 0);
+    sent_len = datalen +8;
+    icmp_p->checksum = in_cksum((unsigned short *)icmp_p, sent_len, 0);
+    printf("checksum sent = %d\n", icmp_p->checksum);
 
     // skip 8 bytes - idk why - is in ping.c
     // seems related to timeval
-    for(i=8; i<datalen;i++){
-        *datap++ = i;
-    }
+    // for(i=8; i<datalen;i++){
+    //     *datap++ = i;
+    // }
 
     // send packet
-    i = sendto(sock, packet, cc, 0, &dst, sizeof(dst));
+    i = sendto(sock, packet, sent_len, 0, &dst, sizeof(dst));
 
     // try to read reply
     struct msghdr msg;
@@ -198,12 +199,15 @@ int main(int argc, char **argv)
     msg.msg_iovlen = 1;
 
     // blocking wait on response
-    polling = MSG_WAITALL;
-    // TODO -rename vars to be more readable
-    // cc just says nothing
-    cc = recvmsg(sock, &msg, polling);
+    // polling = MSG_WAITALL;
+    // int recv_len = recvmsg(sock, &msg, polling);
+    unsigned char buff[1024];
 
-    if (cc < 0){
+    // error - bad address
+    socklen_t dst_len = sizeof(dst);
+    int recv_len = recvfrom(sock, &buff, 1024, 0, (struct sockaddr *)&dst, &dst_len );
+
+    if (recv_len < 0){
         perror("Error in recvmsg");
         exit(1);
     }
@@ -212,12 +216,19 @@ int main(int argc, char **argv)
     uint8_t * buf = msg.msg_iov->iov_base;
     struct icmphdr *icmp_reply;
     icmp_reply = (struct icmphdr *)buf;
+    printf("buffer = %s", buff);
+    // icmp_reply = (struct icmphdr *)buff;
+
     // check checksum
-    int csfailed = in_cksum((unsigned short *)icmp_reply, cc, 0);
-    // if(csfailed){
-    //     perror("Recieved bad checksum");
-    //     exit(1);
-    // }
+    int csfailed = in_cksum((unsigned short *)icmp_reply, recv_len, 0);
+    if(csfailed){
+        printf("checksum sent = %d\n", icmp_p->checksum);
+        printf("len sent = %d\n", sent_len);
+        printf("checksum received = %d\n", csfailed);
+        printf("len received = %d\n", recv_len);
+        perror("Received bad checksum");
+        // exit(1);
+    }
 
     // TO READ ON:
     /* Note that we don't have to check the reply ID to match that whether
@@ -239,11 +250,12 @@ int main(int argc, char **argv)
 
     printf("checksum: %d\n", csfailed);
     printf("icmp type: %d\n", icmp_reply->type);
+    printf("ICMP code: %d\n", icmp_reply->code);
     if(icmp_reply->type == ICMP_ECHOREPLY){
         // print ping reply
         printf("ICMP code: %d\n", icmp_reply->code);
         printf("ICMP type %d\n", icmp_reply->type);
-        printf("rply of %d bytes recieved\n", cc);
+        printf("rply of %d bytes recieved\n", recv_len);
         printf("icmp sequence: %u\n", ntohs(icmp_reply->un.echo.sequence));
     }
 
