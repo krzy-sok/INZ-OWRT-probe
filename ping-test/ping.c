@@ -69,6 +69,25 @@
 
 // }
 
+void dump(unsigned char *data, int size)
+{
+    for (int i = 0; i < 10; ++i)  // Output headings 0..9
+        printf("\t%d", i);
+    putchar('\n');
+
+    for (int i = 0; i < size; i++)
+    {
+        if (i % 10 == 0)
+            printf("%d", i / 10);   // Consider outputting i?
+        printf("\t%02x", data[i]);
+        if (i % 10 == 9)
+            putchar('\n');
+    }
+    if (size % 10 != 0)
+        putchar('\n');  // Finish current/partial line
+    putchar('\n');      // Optional blank line
+}
+
 unsigned short
 in_cksum(const unsigned short *addr, register int len, unsigned short csum)
 {
@@ -164,7 +183,7 @@ int main(int argc, char **argv)
     // }
 
     // send packet
-    i = sendto(sock, packet, sent_len, 0, &dst, sizeof(dst));
+    i = sendto(sock, icmp_p, sent_len, 0, (struct sockaddr*)&dst, sizeof(dst));
 
     // try to read reply
     struct msghdr msg;
@@ -193,42 +212,39 @@ int main(int argc, char **argv)
      */
 
     // assign vector to message struct
-    msg.msg_iov = &iov;
+    // msg.msg_iov = &iov;
     // ?? 1? why not iov.iov_len
     // to future me - it is len of array of vectors
-    msg.msg_iovlen = 1;
+    // msg.msg_iovlen = 1;
 
     // blocking wait on response
     // polling = MSG_WAITALL;
     // int recv_len = recvmsg(sock, &msg, polling);
-    unsigned char buff[1024];
+    unsigned char buff[MAX_PACKET];
 
     // error - bad address
     socklen_t dst_len = sizeof(dst);
-    int recv_len = recvfrom(sock, &buff, 1024, 0, (struct sockaddr *)&dst, &dst_len );
-
+    int recv_len = recvfrom(sock, &buff, MAX_PACKET, 0, (struct sockaddr *)&dst, &dst_len );
+    dump(&buff, recv_len);
+    printf("len received = %d\n", recv_len);
     if (recv_len < 0){
         perror("Error in recvmsg");
         exit(1);
     }
     // in github/amitsaha/ping __u8 is used instead of uint8_t
     // but answer to this stack question says its too old and unportable to use: https://stackoverflow.com/questions/16232557/difference-between-u8-and-uint8-t
-    uint8_t * buf = msg.msg_iov->iov_base;
+    // uint8_t * buf = msg.msg_iov->iov_base;
     struct icmphdr *icmp_reply;
-    icmp_reply = (struct icmphdr *)buf;
-    printf("buffer = %s", buff);
+    // int *skip_ip = *buff +20;
+    icmp_reply = (struct icmphdr *)(buff);
+    // printf("buffer = %s", buff);
     // icmp_reply = (struct icmphdr *)buff;
 
     // check checksum
-    int csfailed = in_cksum((unsigned short *)icmp_reply, recv_len, 0);
-    if(csfailed){
-        printf("checksum sent = %d\n", icmp_p->checksum);
-        printf("len sent = %d\n", sent_len);
-        printf("checksum received = %d\n", csfailed);
-        printf("len received = %d\n", recv_len);
-        perror("Received bad checksum");
-        // exit(1);
-    }
+    recv_len = recv_len ;
+    printf("len of buff %ld\n", sizeof(buff));
+    printf("checksum from icmp_reply = %d\n", icmp_reply->checksum);
+    printf("icmp p sequence: %d\n", icmp_p->un.echo.sequence);
 
     // TO READ ON:
     /* Note that we don't have to check the reply ID to match that whether
@@ -248,9 +264,8 @@ int main(int argc, char **argv)
     // or drop the idea entirely
     // tp = (struct timeval *)&icmp_reply->
 
-    printf("checksum: %d\n", csfailed);
-    printf("icmp type: %d\n", icmp_reply->type);
     printf("ICMP code: %d\n", icmp_reply->code);
+    printf("ICMP type %d\n", icmp_reply->type);
     if(icmp_reply->type == ICMP_ECHOREPLY){
         // print ping reply
         printf("ICMP code: %d\n", icmp_reply->code);
