@@ -69,6 +69,8 @@
 
 // }
 
+// display contents of an array
+// for comparing built and received packets with capture from wireshark
 void dump(unsigned char *data, int size)
 {
     for (int i = 0; i < 10; ++i)  // Output headings 0..9
@@ -88,8 +90,10 @@ void dump(unsigned char *data, int size)
     putchar('\n');      // Optional blank line
 }
 
-unsigned short
-in_cksum(const unsigned short *addr, register int len, unsigned short csum)
+// calc internet checksum
+unsigned short in_cksum(
+    const unsigned short *addr, register int len, unsigned short csum
+)
 {
 	register int nleft = len;
 	const unsigned short *w = addr;
@@ -126,7 +130,6 @@ in_cksum(const unsigned short *addr, register int len, unsigned short csum)
 int main(int argc, char **argv)
 {
     int sock;
-    // struct sockaddr_in source = {.sin_family = AF_INET};
     struct sockaddr_in dst;
 
     if(argc < 2){
@@ -138,9 +141,6 @@ int main(int argc, char **argv)
         perror("Invalid ip addr\n");
         exit(-1);
     }
-    // assign a port
-    // to be rethinked - port can be blocked and plan will go kaput
-    // dst.sin_port = htons(1025);
 
     // crate icmp socket
     sock = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
@@ -176,8 +176,7 @@ int main(int argc, char **argv)
     icmp_p->checksum = in_cksum((unsigned short *)icmp_p, sent_len, 0);
     printf("checksum sent = %d\n", icmp_p->checksum);
 
-    // skip 8 bytes - idk why - is in ping.c
-    // seems related to timeval
+    // skip 8 bytes - icmp header
     // for(i=8; i<datalen;i++){
     //     *datap++ = i;
     // }
@@ -185,45 +184,13 @@ int main(int argc, char **argv)
     // send packet
     i = sendto(sock, icmp_p, sent_len, 0, (struct sockaddr*)&dst, sizeof(dst));
 
-    // try to read reply
-    struct msghdr msg;
-    int polling;
+
+    // create structs and buffer to hold reply
     char addrbuf[128];
-    // io vector
-    // the more i write in c the more i appreciate c++
-    struct iovec iov;
-
-    // turn addrbuff to vector
-    iov.iov_base = addrbuf;
-    // TODO: change to more space efficient version
-    // that is - hard limit num of sent bytes to some small number
-    // preferably just to transmit timeval
-    iov.iov_len = MAX_PACKET;
-
-    // clear memory taken by msg of garbage
-    memset(&msg, 0 , sizeof(msg));
-
-    msg.msg_name = addrbuf;
-    msg.msg_namelen = sizeof(addrbuf);
-    /* TODO: read this
-     * https://www.safaribooksonline.com/library/view/linux-system-programming/9781449341527/ch04.html
-     and here is msghdr source
-     https://docs.huihoo.com/doxygen/linux/kernel/3.7/include_2linux_2socket_8h_source.html#l00050
-     */
-
-    // assign vector to message struct
-    // msg.msg_iov = &iov;
-    // ?? 1? why not iov.iov_len
-    // to future me - it is len of array of vectors
-    // msg.msg_iovlen = 1;
-
-    // blocking wait on response
-    // polling = MSG_WAITALL;
-    // int recv_len = recvmsg(sock, &msg, polling);
     unsigned char buff[MAX_PACKET];
 
-    // error - bad address
     socklen_t dst_len = sizeof(dst);
+    // recvmsg caused issues with icmp type
     int recv_len = recvfrom(sock, &buff, MAX_PACKET, 0, (struct sockaddr *)&dst, &dst_len );
     dump(&buff, recv_len);
     printf("len received = %d\n", recv_len);
@@ -231,14 +198,9 @@ int main(int argc, char **argv)
         perror("Error in recvmsg");
         exit(1);
     }
-    // in github/amitsaha/ping __u8 is used instead of uint8_t
-    // but answer to this stack question says its too old and unportable to use: https://stackoverflow.com/questions/16232557/difference-between-u8-and-uint8-t
-    // uint8_t * buf = msg.msg_iov->iov_base;
     struct icmphdr *icmp_reply;
     // int *skip_ip = *buff +20;
-    icmp_reply = (struct icmphdr *)(buff);
-    // printf("buffer = %s", buff);
-    // icmp_reply = (struct icmphdr *)buff;
+    icmp_reply = (struct icmphdr *)(buff+20);
 
     // check checksum
     recv_len = recv_len ;
@@ -257,11 +219,7 @@ int main(int argc, char **argv)
     // struct sockaddr_in *from = msg.msg_name;
 
     // calc triptime
-    // to be studied
-    // look at modern ping perhaps?
     // icmp_hdr does not have data field
-    // will do this when ping works
-    // or drop the idea entirely
     // tp = (struct timeval *)&icmp_reply->
 
     printf("ICMP code: %d\n", icmp_reply->code);
@@ -273,10 +231,6 @@ int main(int argc, char **argv)
         printf("rply of %d bytes recieved\n", recv_len);
         printf("icmp sequence: %u\n", ntohs(icmp_reply->un.echo.sequence));
     }
-
-
-    // TODO: napisać promotora jak własny musi być ping -
-    //  czy mam sie męczyć z własną implementacja czy moge zmodyfikować oryginał czy mam użyć exec/skryptu
 
     close(sock);
     printf("closed socket\n");
