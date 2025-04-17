@@ -24,3 +24,11 @@
 // how many packets should be send to a single host in each cycle
 int PING_NUM;
 const int pkt_size = 64;
+
+// since icmphdr does not include data
+// and icmp struct does not send on modern system
+struct icmp_pkt
+{
+    struct icmphdr hdr;
+    char msg[pkt_size  - sizeof(struct icmphdr)];
+};
