@@ -29,6 +29,8 @@
 #define MAX_PACKET  1024
 #define ODDBYTE(v) htons((unsigned short)(v) <<8)
 
+struct timezone tz;
+
 // //  ping a given ip
 // // will send a few packets ~4
 // // will get ip from rotate_target
@@ -155,58 +157,68 @@ int main(int argc, char **argv)
     static unsigned char packet[MAX_PACKET];
 
     // create icmp packet struct
-    struct icmphdr *icmp_p = (struct icmphdr *) packet;
+    struct icmp *icmp_p = (struct icmp *) packet;
 
     int i,sent_len;
     int datalen = 56;
-    // struct timezone tz;
 
     // fill in packet info
-    // struct timeval *tp = (struct timeval *) &packet[8];
-    // unsigned char *datap = &packet[8+sizeof(struct timeval)];
-    icmp_p->type = ICMP_ECHO;
-    icmp_p->code = 0;
-    icmp_p->checksum=0;
+    icmp_p->icmp_type = ICMP_ECHO;
+    icmp_p->icmp_code = 0;
+    icmp_p->icmp_cksum=0;
+
+    // put timeval in icmp packet
+    struct timeval *tp = (struct timeval *) &packet[8];
+    unsigned char *datap = &packet[8+sizeof(struct timeval)];
 
     // get time for rtt
-    // gettimeofday(tp, &tz);
+    gettimeofday(tp, &tz);
+
+    // skip 8 bytes - icmp header
+    for(i=8; i<datalen;i++){
+        *datap++ = i;
+    }
+
 
     // calculate checksum
     sent_len = datalen +8;
-    icmp_p->checksum = in_cksum((unsigned short *)icmp_p, sent_len, 0);
-    printf("checksum sent = %d\n", icmp_p->checksum);
+    icmp_p->icmp_cksum = in_cksum((unsigned short *)icmp_p, sent_len, 0);
+    printf("checksum sent = %d\n", icmp_p->icmp_cksum);
 
-    // skip 8 bytes - icmp header
-    // for(i=8; i<datalen;i++){
-    //     *datap++ = i;
-    // }
 
     // send packet
-    i = sendto(sock, icmp_p, sent_len, 0, (struct sockaddr*)&dst, sizeof(dst));
+    dump(packet, 64);
+    i = sendto(sock, packet, MAX_PACKET, 0, (struct sockaddr*)&dst, sizeof(dst));
 
 
     // create structs and buffer to hold reply
-    char addrbuf[128];
     unsigned char buff[MAX_PACKET];
+    struct icmp *icmp_reply;
+    struct timeval *tv_recv;
+    struct timeval tv_curr;
+    int triptime;
+
 
     socklen_t dst_len = sizeof(dst);
     // recvmsg caused issues with icmp type
     int recv_len = recvfrom(sock, &buff, MAX_PACKET, 0, (struct sockaddr *)&dst, &dst_len );
-    dump(&buff, recv_len);
+
+
     printf("len received = %d\n", recv_len);
     if (recv_len < 0){
         perror("Error in recvmsg");
         exit(1);
     }
-    struct icmphdr *icmp_reply;
-    // int *skip_ip = *buff +20;
-    icmp_reply = (struct icmphdr *)(buff+20);
 
-    // check checksum
-    recv_len = recv_len ;
+    // dump(&buff, recv_len);
+
+    // trip time calculation
+    icmp_reply = (struct icmp *)(buff+20);
+    gettimeofday(&tv_curr,&tz);
+    tv_recv = (struct timeval *)&icmp_reply->icmp_data[0];
+
     printf("len of buff %ld\n", sizeof(buff));
-    printf("checksum from icmp_reply = %d\n", icmp_reply->checksum);
-    printf("icmp p sequence: %d\n", icmp_p->un.echo.sequence);
+    printf("checksum from icmp_reply = %d\n", icmp_reply->icmp_cksum);
 
     // TO READ ON:
     /* Note that we don't have to check the reply ID to match that whether
@@ -218,18 +230,14 @@ int main(int argc, char **argv)
     // address of our correspondent
     // struct sockaddr_in *from = msg.msg_name;
 
-    // calc triptime
-    // icmp_hdr does not have data field
-    // tp = (struct timeval *)&icmp_reply->
-
-    printf("ICMP code: %d\n", icmp_reply->code);
-    printf("ICMP type %d\n", icmp_reply->type);
-    if(icmp_reply->type == ICMP_ECHOREPLY){
+    // printf("ICMP code: %d\n", icmp_reply->icmp_code);
+    // printf("ICMP type %d\n", icmp_reply->icmp_type);
+    if(icmp_reply->icmp_type == ICMP_ECHOREPLY){
         // print ping reply
-        printf("ICMP code: %d\n", icmp_reply->code);
-        printf("ICMP type %d\n", icmp_reply->type);
+        printf("ICMP code: %d\n", icmp_reply->icmp_code);
+        printf("ICMP type %d\n", icmp_reply->icmp_type);
         printf("rply of %d bytes recieved\n", recv_len);
-        printf("icmp sequence: %u\n", ntohs(icmp_reply->un.echo.sequence));
+        printf("icmp sequence: %u\n", ntohs(icmp_reply->icmp_seq));
     }
 
     close(sock);
