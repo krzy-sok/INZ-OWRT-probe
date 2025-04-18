@@ -14,12 +14,14 @@
 #include <string.h>
 #include <stdlib.h>
 #include <netinet/ip_icmp.h>
+#include <sys/time.h>
 #include <time.h>
 #include <fcntl.h>
 #include <signal.h>
 
 
-#define PING_PKT_S  64;
+#define PING_PKT_S 64
+#define TIMEOUT_SEC 2
 // global vars not in define for ability to set them from call arguments
 // how many packets should be send to a single host in each cycle
 int PING_NUM;
@@ -30,7 +32,7 @@ int PING_NUM;
 struct icmp_pkt
 {
     struct icmphdr hdr;
-    char msg[64 - sizeof(struct icmphdr)];
+    char msg[PING_PKT_S - sizeof(struct icmphdr)];
 };
 
 // Calculate the checksum (RFC 1071)
@@ -49,6 +51,36 @@ unsigned short checksum(void *b, int len)
     result = ~sum;
     return result;
 }
+
+int send_ping(int sock, struct sockaddr_in dst)
+{
+    int ttl = 64;
+    unsigned char packet_buffer[PING_PKT_S];
+    struct icmp_pkt *packet = (struct icmp_pkt *) packet_buffer;
+
+    // set header
+    packet->hdr.type = 0;
+    packet->hdr.code = 0;
+    packet->hdr.checksum = 0;
+
+    struct timespec t_sent, t_recived;
+    struct timeval *tv_timeout;
+    tv_timeout->tv_sec = TIMEOUT_SEC;
+    tv_timeout->tv_usec = 0;
+
+    // set ttl
+    if (setsockopt(sock, SOL_IP, IP_TTL, &ttl, sizeof(ttl)) != 0) {
+        printf("\nSetting socket options to TTL failed!\n");
+        return;
+    } else {
+        printf("\nSocket set to TTL...\n");
+    }
+
+    // set timeout on recive
+    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)tv_timeout, sizeof tv_timeout);
+
+}
+
 
 int main(int argc, char **argv)
 {
@@ -72,6 +104,7 @@ int main(int argc, char **argv)
     }
     printf("created socket\n");
 
+    send_ping(sock, dst);
 
     close(sock);
     return 0;
