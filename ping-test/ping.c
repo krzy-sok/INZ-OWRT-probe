@@ -19,22 +19,23 @@
 #include <signal.h>
 
 
-// #define pings  64;
+#define PING_PKT_S  64;
 // global vars not in define for ability to set them from call arguments
 // how many packets should be send to a single host in each cycle
 int PING_NUM;
-const int pkt_size = 64;
+
 
 // since icmphdr does not include data
 // and icmp struct does not send on modern system
 struct icmp_pkt
 {
     struct icmphdr hdr;
-    char msg[pkt_size  - sizeof(struct icmphdr)];
+    char msg[64 - sizeof(struct icmphdr)];
 };
 
 // Calculate the checksum (RFC 1071)
-unsigned short checksum(void *b, int len) {
+unsigned short checksum(void *b, int len)
+{
     unsigned short *buf = b;
     unsigned int sum = 0;
     unsigned short result;
@@ -47,4 +48,31 @@ unsigned short checksum(void *b, int len) {
     sum += (sum >> 16);
     result = ~sum;
     return result;
+}
+
+int main(int argc, char **argv)
+{
+    struct sockaddr_in dst;
+
+    if(argc < 2){
+        printf("Ip address needed\n");
+        exit(-1);
+    }
+    // check if given ip is valid
+    if (inet_aton(argv[1], &dst.sin_addr) == 0){
+        perror("Invalid ip addr\n");
+        exit(-1);
+    }
+
+    // create IPPROTO_ICMP socket
+    int sock = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+    if(sock < 0){
+        perror("Error crating socket\n");
+        exit(-2);
+    }
+    printf("created socket\n");
+
+
+    close(sock);
+    return 0;
 }
