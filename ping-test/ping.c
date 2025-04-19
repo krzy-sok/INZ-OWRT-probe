@@ -22,6 +22,7 @@
 
 #define PING_PKT_S 64
 #define TIMEOUT_SEC 4
+#define ODDBYTE(v) htons((unsigned short)(v) <<8)
 // global vars not in define for ability to set them from call arguments
 // how many packets should be send to a single host in each cycle
 int PING_NUM;
@@ -36,20 +37,37 @@ struct icmp_pkt
 };
 
 // Calculate the checksum (RFC 1071)
-unsigned short checksum(void *b, int len)
+unsigned short in_cksum(
+    const unsigned short *addr, register int len, unsigned short csum
+)
 {
-    unsigned short *buf = b;
-    unsigned int sum = 0;
-    unsigned short result;
+	register int nleft = len;
+	const unsigned short *w = addr;
+	register unsigned short answer;
+	register int sum = csum;
 
-    for (sum = 0; len > 1; len -= 2)
-        sum += *buf++;
-    if (len == 1)
-        sum += *(unsigned char *)buf;
-    sum = (sum >> 16) + (sum & 0xFFFF);
-    sum += (sum >> 16);
-    result = ~sum;
-    return result;
+	/*
+	 *  Our algorithm is simple, using a 32 bit accumulator (sum),
+	 *  we add sequential 16 bit words to it, and at the end, fold
+	 *  back all the carry bits from the top 16 bits into the lower
+	 *  16 bits.
+	 */
+	while (nleft > 1)  {
+		sum += *w++;
+		nleft -= 2;
+	}
+
+	/* mop up an odd byte, if necessary */
+	if (nleft == 1)
+		sum += ODDBYTE(*(unsigned char *)w); /* le16toh() may be unavailable on old systems */
+
+	/*
+	 * add back carry outs from top 16 bits to low 16 bits
+	 */
+	sum = (sum >> 16) + (sum & 0xffff);	/* add hi 16 to low 16 */
+	sum += (sum >> 16);			/* add carry */
+	answer = ~sum;				/* truncate to 16 bits */
+	return (answer);
 }
 
 int send_ping(int sock, struct sockaddr_in dst, char* addr)
@@ -87,7 +105,7 @@ int send_ping(int sock, struct sockaddr_in dst, char* addr)
     // }
 
     // set checksum
-    packet->hdr.checksum = checksum(&packet, sizeof(struct icmp_pkt));
+    packet->hdr.checksum = in_cksum((unsigned short *)packet, sizeof(packet_buffer), 0 );
 
     // CCLOCK_REALTIME is considered undeclared
     // but its value is 0 as per https://codebrowser.dev/glibc/glibc/sysdeps/unix/sysv/linux/bits/time.h.html
