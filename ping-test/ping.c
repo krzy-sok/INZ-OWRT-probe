@@ -70,7 +70,7 @@ unsigned short in_cksum(
 	return (answer);
 }
 
-int send_ping(int sock, struct sockaddr_in dst, char* addr)
+double send_ping(int sock, struct sockaddr_in dst, char* addr)
 {
     int ttl = 64;
     unsigned char packet_buffer[PING_PKT_S];
@@ -141,7 +141,7 @@ int send_ping(int sock, struct sockaddr_in dst, char* addr)
         return -1;
     }
     printf("%d bytes from (ip: %s) rtt = %f ms.\n", PING_PKT_S, addr, rtt);
-    return 0;
+    return rtt;
 }
 
 
