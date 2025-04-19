@@ -97,7 +97,7 @@ int send_ping(int sock, struct sockaddr_in dst, char* addr)
     // fails to send - suspect big endian
     // hotn entire buffer or do just the header since it worked
     printf("packet type %d, packet code %d\n", packet->hdr.type, packet->hdr.code);
-    int sent_res = sendto(sock, &packet, sizeof(struct icmp_pkt), 0, (struct sockaddr *)&dst, sizeof(struct sockaddr));
+    int sent_res = sendto(sock, packet_buffer, sizeof(packet_buffer), 0, (struct sockaddr *)&dst, sizeof(struct sockaddr));
     if (sent_res < 0){
         printf("Failed to send packet! %d\n", sent_res);
         return -1;
