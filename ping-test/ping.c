@@ -146,13 +146,6 @@ double send_ping(int sock, struct sockaddr_in dst, char* addr)
 
 int handle_list(int list_len,char **argv)
 {
-
-    struct sockaddr_in dst;
-    if (inet_aton(argv[1], &dst.sin_addr) == 0){
-        perror("Invalid ip addr\n");
-        exit(-1);
-    }
-
     // create IPPROTO_ICMP socket
     int sock = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
     if(sock < 0){
@@ -161,16 +154,29 @@ int handle_list(int list_len,char **argv)
     }
     printf("created socket\n");
 
-    send_ping(sock, dst, argv[1]);
 
+    // convert str to inet address
+    struct sockaddr_in dst[list_len];
+    printf("sending ping to %d domains\n", list_len);
+    // loop tough list of given ips
+    for(int i = 0; i<list_len; i++)
+    {
+        // skip program name
+        if (inet_aton(argv[i+1], &dst[i].sin_addr) == 0){
+            printf("Invalid ip addr on position %d\n", i);
+            exit(-1);
+        }
+        else{
+            send_ping(sock, dst[1], argv[i+1]);
+        }
+    }
     close(sock);
+    return 0;
 }
 
 
 int main(int argc, char **argv)
 {
-    struct sockaddr_in dst;
-
     if(argc < 2){
         printf("Usage: \nmy_ping <ipaddress> [<ip_address>] - ping all listed ip addresses\n");
         printf("my_ping -r <ip-address> <ip-address> ping all ip addresses from selected range\n");
@@ -178,13 +184,13 @@ int main(int argc, char **argv)
         exit(-1);
     }
     // check if given ip is valid
-    if(strcmp(argv[1],"-r")){
+    if(strcmp(argv[1],"-r")==0){
         // handle_range();
         printf("To be implemented\n");
         return 0;
     }
 
-    if(strcmp(argv[1],"-f")){
+    if(strcmp(argv[1],"-f")==0){
         // handle_file();
         printf("To be implemented\n");
         return 0;
