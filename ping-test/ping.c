@@ -150,7 +150,9 @@ int main(int argc, char **argv)
     struct sockaddr_in dst;
 
     if(argc < 2){
-        printf("Ip address needed\n");
+        printf("Usage: \nmy_ping <ipaddress> [<ip_address>] - ping all listed ip addresses\n");
+        printf("my_ping -r <ip-address> <ip-address> ping all ip addresses from selected range\n");
+        printf("my_ping -f <path> - ping addresses from given file, addresses should be separated by a newline\n")
         exit(-1);
     }
     // check if given ip is valid
