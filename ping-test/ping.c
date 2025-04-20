@@ -144,18 +144,10 @@ double send_ping(int sock, struct sockaddr_in dst, char* addr)
     return rtt;
 }
 
-
-int main(int argc, char **argv)
+int handle_list(int list_len,char **argv)
 {
-    struct sockaddr_in dst;
 
-    if(argc < 2){
-        printf("Usage: \nmy_ping <ipaddress> [<ip_address>] - ping all listed ip addresses\n");
-        printf("my_ping -r <ip-address> <ip-address> ping all ip addresses from selected range\n");
-        printf("my_ping -f <path> - ping addresses from given file, addresses should be separated by a newline\n")
-        exit(-1);
-    }
-    // check if given ip is valid
+    struct sockaddr_in dst;
     if (inet_aton(argv[1], &dst.sin_addr) == 0){
         perror("Invalid ip addr\n");
         exit(-1);
@@ -172,5 +164,32 @@ int main(int argc, char **argv)
     send_ping(sock, dst, argv[1]);
 
     close(sock);
+}
+
+
+int main(int argc, char **argv)
+{
+    struct sockaddr_in dst;
+
+    if(argc < 2){
+        printf("Usage: \nmy_ping <ipaddress> [<ip_address>] - ping all listed ip addresses\n");
+        printf("my_ping -r <ip-address> <ip-address> ping all ip addresses from selected range\n");
+        printf("my_ping -f <path> - ping addresses from given file, addresses should be separated by a newline\n");
+        exit(-1);
+    }
+    // check if given ip is valid
+    if(strcmp(argv[1],"-r")){
+        // handle_range();
+        printf("To be implemented\n");
+        return 0;
+    }
+
+    if(strcmp(argv[1],"-f")){
+        // handle_file();
+        printf("To be implemented\n");
+        return 0;
+    }
+
+    handle_list(argc-1, argv);
     return 0;
 }
