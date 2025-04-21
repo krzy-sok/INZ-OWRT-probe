@@ -36,6 +36,27 @@ struct icmp_pkt
     char msg[PING_PKT_S - sizeof(struct icmphdr)];
 };
 
+// display contents of an array
+// for comparing built and received packets with capture from wireshark
+void dump(unsigned char *data, int size)
+{
+    for (int i = 0; i < 10; ++i)  // Output headings 0..9
+        printf("\t%d", i);
+    putchar('\n');
+
+    for (int i = 0; i < size; i++)
+    {
+        if (i % 10 == 0)
+            printf("%d", i / 10);   // Consider outputting i?
+        printf("\t%02x", data[i]);
+        if (i % 10 == 9)
+            putchar('\n');
+    }
+    if (size % 10 != 0)
+        putchar('\n');  // Finish current/partial line
+    putchar('\n');      // Optional blank line
+}
+
 // Calculate the checksum (RFC 1071)
 unsigned short in_cksum(
     const unsigned short *addr, register int len, unsigned short csum
@@ -114,10 +135,13 @@ double send_ping(int sock, struct sockaddr_in dst, char* addr)
     // send packet
     // fails to send - suspect big endian
     // hotn entire buffer or do just the header since it worked
+    printf("socket desc: %d", sock);
     printf("packet type %d, packet code %d\n", packet->hdr.type, packet->hdr.code);
     int sent_res = sendto(sock, packet_buffer, sizeof(packet_buffer), 0, (struct sockaddr *)&dst, sizeof(struct sockaddr));
     if (sent_res < 0){
         printf("Failed to send packet! %d\n", sent_res);
+        printf("socaddr: %d\n\n", dst.sin_addr.s_addr);
+        dump(packet_buffer, PING_PKT_S);
         return -1;
     }
 
@@ -141,6 +165,7 @@ double send_ping(int sock, struct sockaddr_in dst, char* addr)
         return -1;
     }
     printf("%d bytes from (ip: %s) rtt = %f ms.\n", PING_PKT_S, addr, rtt);
+    dump(reply_buffer, recv_res);
     return rtt;
 }
 
@@ -167,7 +192,8 @@ int handle_list(int list_len,char **argv)
             exit(-1);
         }
         else{
-            send_ping(sock, dst[1], argv[i+1]);
+            printf("address: %s\n", argv[i+1]);
+            send_ping(sock, dst[i], argv[i+1]);
         }
     }
     close(sock);
