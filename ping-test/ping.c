@@ -4,6 +4,10 @@
 
 
 // reference https://www.geeksforgeeks.org/ping-in-c/
+
+// reference for raw eth https://hacked10bits.blogspot.com/2011/12/sending-raw-ethernet-frames-in-6-easy.html
+// and https://gist.github.com/austinmarton/2862515
+
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/socket.h>
