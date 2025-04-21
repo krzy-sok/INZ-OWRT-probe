@@ -27,6 +27,7 @@
 #define PING_PKT_S 64
 #define TIMEOUT_SEC 4
 #define ODDBYTE(v) htons((unsigned short)(v) <<8)
+#define MAX_PATH_LEN 50
 // global vars not in define for ability to set them from call arguments
 // how many packets should be send to a single host in each cycle
 int PING_NUM;
