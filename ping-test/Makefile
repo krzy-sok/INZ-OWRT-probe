@@ -10,9 +10,5 @@ default: main
 main:
 	$(CXX) $(CXXFLAGS) $(FILES) -o my_ping
 
-
-sys_ping:
-	$(CXX) $(CXXFLAGS) system_ping.c -o sys_ping
-
 clean:
-	rm -r my_ping, sys_ping
+	rm -r my_ping
