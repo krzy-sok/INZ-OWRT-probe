@@ -206,7 +206,12 @@ int handle_list(int list_len,char **argv)
 
 int handle_file(char* path)
 {
-
+    // TODO
+    // check if path is valid
+    // open file
+    // read lines with addresses
+    // and convert them to inetaddr
+    // call send_ping for each addr
 }
 
 void pr_usage()
@@ -228,7 +233,7 @@ int main(int argc, char **argv)
         if(argc > 3){
             fprintf(stderr,"Incorrect number of arguments: %d\n", argc);
             pr_usage();
-            return -1
+            return -1;
         }
         printf("To be implemented\n");
         return 0;
