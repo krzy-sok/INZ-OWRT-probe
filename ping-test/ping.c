@@ -204,18 +204,32 @@ int handle_list(int list_len,char **argv)
     return 0;
 }
 
+int handle_file(char* path)
+{
+
+}
+
+void pr_usage()
+{
+    printf("Usage: \nmy_ping <ipaddress> [<ip_address>] - ping all listed ip addresses\n");
+    printf("my_ping -r <ip-address> <ip-address> ping all ip addresses from selected range\n");
+    printf("my_ping -f <path> - ping addresses from given file, addresses should be separated by a newline\n");
+}
 
 int main(int argc, char **argv)
 {
     if(argc < 2){
-        printf("Usage: \nmy_ping <ipaddress> [<ip_address>] - ping all listed ip addresses\n");
-        printf("my_ping -r <ip-address> <ip-address> ping all ip addresses from selected range\n");
-        printf("my_ping -f <path> - ping addresses from given file, addresses should be separated by a newline\n");
+        pr_usage();
         exit(-1);
     }
     // check if given ip is valid
     if(strcmp(argv[1],"-r")==0){
         // handle_range();
+        if(argc > 3){
+            fprintf(stderr,"Incorrect number of arguments: %d\n", argc);
+            pr_usage();
+            return -1
+        }
         printf("To be implemented\n");
         return 0;
     }
