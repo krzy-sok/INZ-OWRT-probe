@@ -5,13 +5,14 @@
 class PingRow
 {
     private:
-        std::string ip;
-        std::string mac;
-        std::string interface;
-        int rtt;
-        int timestamp;
+        std::string _ip;
+        std::string _mac;
+        std::string _interface;
+        double _rtt;
+        int _timestamp;
 
     public:
-        PingRow(std::string ip, std::string mac, std::string interface, int rtt, int timestamp);
+        PingRow(std::string ip, std::string mac, std::string interface, double rtt, int timestamp);
+        std::string to_string();
 };
 #endif
