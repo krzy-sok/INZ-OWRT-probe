@@ -1,6 +1,7 @@
 #include <sys/socket.h>
 #include <iostream>
 #include <ctime>
+#include <optional>
 
 #include "host.hpp"
 #include "../ping_helpers.hpp"
@@ -18,7 +19,7 @@ Host::Host(std::string ip, std::string mac, std::string interface)
     dst.sin_family = AF_INET;
 }
 // TODO: modernize to c++ where possible
-PingRow Host::ping(int sock)
+std::optional<PingRow> Host::ping(int sock)
 {
     int ttl = 64;
     unsigned char packet_buffer[PING_PKT_S];
@@ -32,8 +33,7 @@ PingRow Host::ping(int sock)
     // set ttl
     if (setsockopt(sock, SOL_IP, IP_TTL, &ttl, sizeof(ttl)) != 0) {
         printf("\nSetting socket options to TTL failed!\n");
-        // TODO - do something else than throw, tho it should not happen
-        throw std::runtime_error("cannot set ttl");
+        return {};
     } else {
         printf("\nSocket set to TTL...\n");
     }
@@ -51,24 +51,17 @@ PingRow Host::ping(int sock)
     // set checksum
     packet->hdr.checksum = in_cksum((unsigned short *)packet, sizeof(packet_buffer), 0 );
 
-    // CCLOCK_REALTIME is considered undeclared
-    // but its value is 0 as per https://codebrowser.dev/glibc/glibc/sysdeps/unix/sysv/linux/bits/time.h.html
     clock_gettime(0, &t_sent);
 
-    // send packet
-    // fails to send - suspect big endian
-    // hotn entire buffer or do just the header since it worked
     printf("socket desc: %d", sock);
     printf("packet type %d, packet code %d\n", packet->hdr.type, packet->hdr.code);
-    int sent_res = sendto(sock, packet_buffer, sizeof(packet_buffer), 0, (struct sockaddr *)&dst, sizeof(struct sockaddr));
-    if (sent_res < 0){
+    int sent_res = sendto(sock, &packet_buffer, sizeof(packet_buffer), 0, (struct sockaddr *)&dst, sizeof(struct sockaddr));
+    if (sent_res <= 0){
         printf("Failed to send packet! %d\n", sent_res);
         printf("socaddr: %d\n\n", dst.sin_addr.s_addr);
         printf("soc sin family: %d\n\n", dst.sin_family);
-        // dump(packet_buffer, PING_PKT_S);
 
-        // TODO: dont throw, make program just continue
-        throw std::runtime_error("Cannot send packet");
+        return {};
     }
     printf("socaddr: %d\n\n", dst.sin_addr.s_addr);
     printf("soc sin family: %d\n\n", dst.sin_family);
@@ -80,19 +73,22 @@ PingRow Host::ping(int sock)
     int recv_res = recvfrom(sock, &reply_buffer, sizeof(reply_buffer), 0, (struct sockaddr *)&dst, &dst_len);
     if (recv_res <0){
         printf("Failed to receive packet!%d\n", recv_res);
-        // return -1;
-        throw std::runtime_error("Cannot receive packet");
+        return {};
     }
 
     clock_gettime(0, &t_recived);
     double rtt = ((double)(t_recived.tv_nsec - t_sent.tv_nsec))/1000000;
-    // double rtt = (t_recived.tv_sec - t_sent.tv_sec) * 1000 + time_elapsed;
 
     struct icmphdr *recv_hdr = (struct icmphdr *)reply_buffer;
-    if (recv_hdr->type != 0 && recv_hdr->code!=0){
-        printf("Not echo reply\n");
-        throw std::runtime_error("Not an echo reply");
+    // there is a bug in the kernel with how icmp packets are casted
+    // https://blog.benjojo.co.uk/post/linux-icmp-type-69
+    // meaning tahat i need a work around to check type and code as these values are unreliable
+    // or skip this step of validation, sic!
+    if (recv_hdr->type != 0 || recv_hdr->code != 0){
+        std::cout<< "failed to recive.\ncode: " <<int(recv_hdr->code) << " type: " << int(recv_hdr->type) << std::endl;
+        return {};
     }
+    if(recv_hdr)
     printf("%d bytes from (ip: %s) rtt = %f ms.\n", PING_PKT_S, ip.data(), rtt);
 
     std::cout << rtt << std::endl;

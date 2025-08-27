@@ -2,6 +2,7 @@
 #define HOSt
 #include <string>
 #include <netdb.h>
+#include <optional>
 #include "ping_row.hpp"
 
 class Host
@@ -14,6 +15,6 @@ class Host
 
     public:
         Host(std::string ip, std::string mac, std::string interface);
-        PingRow ping(int sock);
+        std::optional<PingRow> ping(int sock);
 };
 #endif

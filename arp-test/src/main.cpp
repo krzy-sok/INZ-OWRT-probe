@@ -5,6 +5,7 @@
 #include "classes/host.hpp"
 #include "classes/ping_row.hpp"
 
+// ISSUE: ping somehow succeds when host is unreachable
 int main()
 {
     Host host = Host("8.8.8.8", "no", "no");
@@ -16,7 +17,16 @@ int main()
     }
     std::cout<<"created socket\n";
 
-    PingRow ping = host.ping(sock);
-    std::cout<< ping.to_string();
+    auto pingres = host.ping(sock);
+    if(pingres.has_value())
+    {
+        PingRow ping = pingres.value();
+        std::cout<< ping.to_string();
+    }
+    else
+    {
+        std::cout << "Ping to host failed \n";
+    }
+
     return 0;
 }

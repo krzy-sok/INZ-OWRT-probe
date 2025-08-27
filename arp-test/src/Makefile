@@ -8,7 +8,7 @@ FILES = main.cpp classes/host.hpp classes/host.cpp classes/ping_row.hpp classes/
 default: main
 # targets
 main:
-	$(CXX) $(CXXFLAGS) $(FILES) -o myping -lstdc++
+	$(CXX) $(CXXFLAGS) $(FILES) -o myping -lstdc++ -std=c++17
 
 clean:
 	rm -r myping
