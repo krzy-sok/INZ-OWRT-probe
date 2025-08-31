@@ -80,13 +80,13 @@ std::optional<PingRow> Host::ping(int sock)
     clock_gettime(0, &t_recived);
     double rtt = ((double)(t_recived.tv_nsec - t_sent.tv_nsec))/1000000;
 
-    struct icmphdr *recv_hdr = (struct icmphdr *)reply_buffer;
+    struct icmp_reply *recv_hdr = (struct icmp_reply *)reply_buffer;
     // there is a bug in the kernel with how icmp packets are casted
     // https://blog.benjojo.co.uk/post/linux-icmp-type-69
     // meaning tahat i need a work around to check type and code as these values are unreliable
     // or skip this step of validation, sic!
-    if (recv_hdr->type != 0 || recv_hdr->code != 0){
-        std::cout<< "failed to recive.\ncode: " <<int(recv_hdr->code) << " type: " << int(recv_hdr->type) << std::endl;
+    if (recv_hdr->icmp_hdr.type != 0 || recv_hdr->icmp_hdr.code != 0){
+        std::cout<< "failed to recive.\ncode: " <<int(recv_hdr->icmp_hdr.code) << " type: " << int(recv_hdr->icmp_hdr.type) << std::endl;
         return {};
     }
     if(recv_hdr)

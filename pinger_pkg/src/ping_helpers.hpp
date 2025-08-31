@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <netinet/ip_icmp.h>
 #include <unistd.h>
+#include <netinet/ip.h>
 
 #define ODDBYTE(v) htons((unsigned short)(v) <<8)
 #define PING_PKT_S 64
@@ -14,6 +15,14 @@ struct icmp_pkt
 {
     struct icmphdr hdr;
     char msg[PING_PKT_S - sizeof(struct icmphdr)];
+};
+
+// since recv from on raw socket is bugged and reads IP header
+// we need to facilitate the ipheader
+struct icmp_reply
+{
+	struct iphdr ip_hdr;
+    struct icmphdr icmp_hdr;
 };
 
 // Calculate the checksum (RFC 1071)
