@@ -8,7 +8,7 @@ PKG_RELEASE:=1
 
 # Source settings (i.e. where to find the source codes)
 # This is a custom variable, used below
-SOURCE_DIR:=/home/flopper/INZ/probe-module/arp-test/src
+SOURCE_DIR:=/home/flopper/INZ/probe-module/pinger_pkg/src
 FILES = $(SOURCE_DIR)/main.cpp $(SOURCE_DIR)/classes/host.hpp $(SOURCE_DIR)/classes/host.cpp $(SOURCE_DIR)/classes/ping_row.hpp $(SOURCE_DIR)/classes/ping_row.cpp
 
 
@@ -18,12 +18,13 @@ include $(INCLUDE_DIR)/package.mk
 define Package/pinger_pkg
 	SECTION:=examples
 	CATEGORY:=Examples
-	TITLE:=Arp reader
+	TITLE:=C++ OOp Pinging demo
+	DEPENDS:=+libstdcpp
 endef
 
 # Package description; a more verbose description on what our package does
 define Package/pinger_pkg/description
-	Prints contents of arp cache
+	Pings host 8.8.8.8
 endef
 
 # Package preparation instructions; create the build directory and copy the source code.
@@ -39,7 +40,7 @@ endef
 # 		$(TARGET_GCC) $(TARGET_CFLAGS) -o $(PKG_BUILD_DIR)/pinger_pkg.o -c $(PKG_BUILD_DIR)/arp-pinger.c
 # 		$(TARGET_GCC) $(TARGET_LDFLAGS) -o $(PKG_BUILD_DIR)/$1 $(PKG_BUILD_DIR)/pinger_pkg.o
 define Build/Compile
-		$(TARGET_CXX) $(TARGET_CXXFLAGS) $(FILES) -o $(PKG_BUILD_DIR)pinger_pkg -std=c++17
+		$(TARGET_CXX) $(TARGET_CXXFLAGS) $(FILES) -o $(PKG_BUILD_DIR)/pinger_pkg $(TARGET_LIBS) -std=c++17
 endef
 
 # Package install instructions; create a directory inside the package to hold our executable, and then copy the executable we built previously into the folder
