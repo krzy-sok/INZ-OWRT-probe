@@ -8,9 +8,9 @@
 class Host
 {
     private:
-        std::string ip;
-        std::string mac;
-        std::string interface;
+        std::string _ip;
+        std::string _mac;
+        std::string _interface;
         struct sockaddr_in dst;
 
     public:

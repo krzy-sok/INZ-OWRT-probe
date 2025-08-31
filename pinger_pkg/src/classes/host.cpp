@@ -9,13 +9,13 @@
 
 Host::Host(std::string ip, std::string mac, std::string interface)
 {
-    ip = ip;
-    mac = mac;
-    interface = interface;
+    _ip = ip;
+    _mac = mac;
+    _interface = interface;
     if(inet_aton(ip.data(), &dst.sin_addr) == 0)
     {
         // TODO: dont throw - make the program able to go on or exit
-        throw std::invalid_argument("Incorrect ipv4 address: " + ip);
+        throw std::invalid_argument("Incorrect ipv4 address: " + _ip);
     }
     dst.sin_family = AF_INET;
 }
@@ -90,9 +90,10 @@ std::optional<PingRow> Host::ping(int sock)
         return {};
     }
     if(recv_hdr)
-    printf("%d bytes from (ip: %s) rtt = %f ms.\n", PING_PKT_S, ip.data(), rtt);
+    printf("%d bytes from (ip: %s) rtt = %f ms.\n", PING_PKT_S, _ip.data(), rtt);
 
-    std::cout << rtt << std::endl;
-    PingRow ping_res = PingRow(ip, mac, interface, rtt, std::time(nullptr));
+    std::cout << "in host.ping rtt: "<< rtt << std::endl;
+    std::cout <<"in host.ping ip: " << _ip << std::endl;
+    PingRow ping_res = PingRow(_ip, _mac, _interface, rtt, std::time(nullptr));
     return ping_res;
 }
