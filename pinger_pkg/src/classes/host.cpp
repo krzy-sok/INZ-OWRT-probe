@@ -33,10 +33,10 @@ std::optional<PingRow> Host::ping(int sock)
 
     // set ttl
     if (setsockopt(sock, SOL_IP, IP_TTL, &ttl, sizeof(ttl)) != 0) {
-        printf("\nSetting socket options to TTL failed!\n");
+        std::cerr <<"Setting socket options to TTL failed!" << std::endl;
         return {};
     } else {
-        printf("\nSocket set to TTL...\n");
+        std::clog<<"Socket set to TTL..." << std::endl;
     }
 
     // set timeout on recive
@@ -54,18 +54,15 @@ std::optional<PingRow> Host::ping(int sock)
 
     clock_gettime(0, &t_sent);
 
-    printf("socket desc: %d", sock);
-    printf("packet type %d, packet code %d\n", packet->hdr.type, packet->hdr.code);
+    std::clog<<"packet type "<<packet->hdr.type<<" packet code "<< packet->hdr.code << std::endl;
     int sent_res = sendto(sock, &packet_buffer, sizeof(packet_buffer), 0, (struct sockaddr *)&dst, sizeof(struct sockaddr));
     if (sent_res <= 0){
-        printf("Failed to send packet! %d\n", sent_res);
-        printf("socaddr: %d\n\n", dst.sin_addr.s_addr);
-        printf("soc sin family: %d\n\n", dst.sin_family);
+        std::cerr << "Failed to send packet! "<< sent_res <<std::endl;
+        std::cerr<<"socaddr: " << dst.sin_addr.s_addr <<std::endl;
+        std::cerr<<"soc sin family: " << dst.sin_family <<std::endl;
 
         return {};
     }
-    printf("socaddr: %d\n\n", dst.sin_addr.s_addr);
-    printf("soc sin family: %d\n\n", dst.sin_family);
 
     // prepare buffer
     unsigned char reply_buffer[128];
@@ -73,7 +70,7 @@ std::optional<PingRow> Host::ping(int sock)
     // receive reply
     int recv_res = recvfrom(sock, &reply_buffer, sizeof(reply_buffer), 0, (struct sockaddr *)&dst, &dst_len);
     if (recv_res <0){
-        printf("Failed to receive packet!%d\n", recv_res);
+        std::cerr<<"Failed to receive packet! "<< recv_res<< std::endl;
         return {};
     }
 
@@ -86,14 +83,12 @@ std::optional<PingRow> Host::ping(int sock)
     // meaning tahat i need a work around to check type and code as these values are unreliable
     // or skip this step of validation, sic!
     if (recv_hdr->icmp_hdr.type != 0 || recv_hdr->icmp_hdr.code != 0){
-        std::cout<< "failed to recive.\ncode: " <<int(recv_hdr->icmp_hdr.code) << " type: " << int(recv_hdr->icmp_hdr.type) << std::endl;
+        std::clog<< "Failed to recive.\ncode: " <<int(recv_hdr->icmp_hdr.code) << " type: " << int(recv_hdr->icmp_hdr.type) << std::endl;
         return {};
     }
     if(recv_hdr)
-    printf("%d bytes from (ip: %s) rtt = %f ms.\n", PING_PKT_S, _ip.data(), rtt);
+    std::clog << PING_PKT_S <<" bytes from "<< _ip.data() << " rtt = " << rtt << " ms." << std::endl;
 
-    std::cout << "in host.ping rtt: "<< rtt << std::endl;
-    std::cout <<"in host.ping ip: " << _ip << std::endl;
     PingRow ping_res = PingRow(_ip, _mac, _interface, rtt, std::time(nullptr));
     return ping_res;
 }

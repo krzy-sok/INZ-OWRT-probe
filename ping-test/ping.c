@@ -146,9 +146,12 @@ double send_ping(int sock, struct sockaddr_in dst, char* addr)
     if (sent_res < 0){
         printf("Failed to send packet! %d\n", sent_res);
         printf("socaddr: %d\n\n", dst.sin_addr.s_addr);
+        printf("soc sin family: %d\n\n", dst.sin_family);
         dump(packet_buffer, PING_PKT_S);
         return -1;
     }
+    printf("socaddr: %d\n\n", dst.sin_addr.s_addr);
+    printf("soc sin family: %d\n\n", dst.sin_family);
 
     // prepare buffer
     unsigned char reply_buffer[128];
@@ -161,8 +164,8 @@ double send_ping(int sock, struct sockaddr_in dst, char* addr)
     }
 
     clock_gettime(0, &t_recived);
-    double time_elapsed = ((double)(t_recived.tv_nsec - t_sent.tv_nsec))/1000000;
-    double rtt = (t_recived.tv_sec - t_sent.tv_sec) * 1000 + time_elapsed;
+    double rtt = ((double)(t_recived.tv_nsec - t_sent.tv_nsec))/1000000;
+    // double rtt = (t_recived.tv_sec - t_sent.tv_sec) * 1000 + time_elapsed;
 
     struct icmphdr *recv_hdr = (struct icmphdr *)reply_buffer;
     if (recv_hdr->type != 0 && recv_hdr->code!=0){
@@ -198,6 +201,7 @@ int handle_list(int list_len,char **argv)
         }
         else{
             printf("address: %s\n", argv[i+1]);
+            dst[i].sin_family = AF_INET;
             send_ping(sock, dst[i], argv[i+1]);
         }
     }
@@ -205,15 +209,15 @@ int handle_list(int list_len,char **argv)
     return 0;
 }
 
-int handle_file(char* path)
-{
-    // TODO
-    // check if path is valid
-    // open file
-    // read lines with addresses
-    // and convert them to inetaddr
-    // call send_ping for each addr
-}
+// int handle_file(char* path)
+// {
+//     // TODO
+//     // check if path is valid
+//     // open file
+//     // read lines with addresses
+//     // and convert them to inetaddr
+//     // call send_ping for each addr
+// }
 
 void pr_usage()
 {
