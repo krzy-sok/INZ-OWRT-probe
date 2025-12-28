@@ -34,7 +34,7 @@ std::vector<Host> read_arp()
     // skip file header
     if(!std::getline(arp_cache, line))
     {
-        std::cout<<"failed to read arp cache!";
+        std::cerr<<"Failed to read arp cache!\n";
         throw std::runtime_error("filed to read arp cache");
     }
     std::string ip;
@@ -57,20 +57,38 @@ std::vector<Host> read_arp()
     return hosts;
 }
 
+std::string combine_json(std::vector<PingRow> ping_results){
+    if(ping_results.size() <1){
+        return "";
+    }
+    std::ostringstream string_stream;
+    string_stream << "\"probes\":[";
+    string_stream << ping_results[0].to_json();
+    for(long unsigned int i = 1; i<ping_results.size(); i++){
+        string_stream << ", " << ping_results[i].to_json();
+    }
+    string_stream << "]";
+    return string_stream.str();
+}
+
+// target input params: out folder path?, flood flag, input file in arp-table format
 int main()
 {
-    // Host host = Host("8.8.8.8", "no", "no");
-
     int sock = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
     if(sock < 0){
-        perror("Error crating socket\n");
+        std::cerr << "Error crating socket\n";
         exit(-2);
     }
-    std::cout<<"created socket\n";
+    std::clog<<"created socket\n";
 
     std::vector<Host> hosts = read_arp();
+    std::vector<PingRow> ping_results = std::vector<PingRow>();
     for(Host host : hosts){
-        print_ping(host, sock);
+        std::optional<PingRow> ping_res = host.ping(sock);
+        if(ping_res.has_value()){
+            ping_results.push_back(ping_res.value());
+        }
     }
+    std::cout<<combine_json(ping_results);
     return 0;
 }

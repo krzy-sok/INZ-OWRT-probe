@@ -16,3 +16,10 @@ std::string PingRow::to_string()
     string_stream << "ping result to IP: " << _ip << " rtt: " << _rtt << std::endl;
     return string_stream.str();
 }
+
+std::string PingRow::to_json()
+{
+    std::ostringstream string_stream;
+    string_stream << "{ \"ip\":\"" << _ip <<"\", \"mac\":\""<< _mac << "\", \"rtt\": " << _rtt << ", \"timestamp\":" << _timestamp << "}";
+    return string_stream.str();
+}

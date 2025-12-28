@@ -14,5 +14,6 @@ class PingRow
     public:
         PingRow(std::string ip, std::string mac, std::string interface, double rtt, int timestamp);
         std::string to_string();
+        std::string to_json();
 };
 #endif
