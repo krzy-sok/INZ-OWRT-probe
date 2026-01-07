@@ -11,6 +11,7 @@
 #include "classes/ping_row.hpp"
 
 #define ARP_PATH       "/proc/net/arp"
+#define DEFAULT_NPING_PARAMS "-udp --dest-mac 90-E8-68-14-94-44"
 
 
 
@@ -27,37 +28,6 @@ void print_ping(Host host, int sock){
     }
 }
 
-std::vector<Host> read_arp()
-{
-    std::vector<Host> hosts = {};
-    std::ifstream arp_cache(ARP_PATH);
-    std::string line;
-    // skip file header
-    if(!std::getline(arp_cache, line))
-    {
-        std::cerr<<"Failed to read arp cache!\n";
-        throw std::runtime_error("filed to read arp cache");
-    }
-    std::string ip;
-    std::string mac;
-    std::string interface;
-    std::string _;
-    while(std::getline(arp_cache, line))
-    {
-        std::stringstream line_stream(line);
-        // arp format:
-        // IP address  HW type  Flags  HW address  Mask  Device
-        line_stream >> ip;
-        line_stream >> _;
-        line_stream >> _;
-        line_stream >> mac;
-        line_stream >> _;
-        line_stream >> interface;
-        hosts.push_back(Host(ip, mac, interface));
-    }
-    return hosts;
-}
-
 std::string combine_json(std::vector<PingRow> ping_results){
     if(ping_results.size() <1){
         return "";
@@ -70,6 +40,62 @@ std::string combine_json(std::vector<PingRow> ping_results){
     }
     string_stream << "]";
     return string_stream.str();
+}
+
+std::vector<Host> read_host_file(std::string file_path)
+{
+    std::vector<Host> hosts = {};
+    std::ifstream arp_cache(file_path);
+    std::string line;
+    // skip file header
+    if(!std::getline(arp_cache, line))
+    {
+        std::cerr<<"Failed to read arp cache!\n";
+        throw std::runtime_error("filed to read arp cache");
+    }
+
+    std::function parser_func = parse_arp_table;
+    if(file_path != ARP_PATH){
+        parser_func = parse_host_file
+    }
+
+    while(std::getline(arp_cache, line))
+    {
+        std::stringstream line_stream(line);
+        parser_func(line_stream, hosts);
+    }
+    return hosts;
+}
+
+void parse_arp_table(std::stringstream &line_stream, std::vector<Host> &hosts){
+    // arp format:
+    // IP address  HW type  Flags  HW address  Mask  Device
+    std::string ip;
+    std::string mac;
+    std::string interface;
+    std::string _;
+    line_stream >> ip;
+    line_stream >> _;
+    line_stream >> _;
+    line_stream >> mac;
+    line_stream >> _;
+    line_stream >> interface;
+    hosts.push_back(Host(ip, mac, interface));
+}
+
+// custom host file should not have to include all data from arp-table as haf of it is unused
+void parse_host_file(std::stringstream &line_stream, std::vector<Host> &hosts){
+    std::string ip;
+    std::string mac;
+    std::string interface;
+    line_stream >> ip;
+    line_stream >> mac;
+    line_stream >> interface;
+    hosts.push_back(Host(ip, mac, interface));
+}
+
+std::string generate_mac_address() {
+    // XX-XX-XX-XX-XX-XX
 }
 
 // target input params:
@@ -106,7 +132,7 @@ int main(int argc, char* argv[])
     }
     std::clog<<"created socket\n";
 
-    std::vector<Host> hosts = read_arp();
+    std::vector<Host> hosts = read_host_file();
     std::vector<PingRow> ping_results = std::vector<PingRow>();
     for(Host host : hosts){
         std::optional<PingRow> ping_res = host.ping(sock);
