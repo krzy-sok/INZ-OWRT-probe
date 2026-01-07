@@ -5,6 +5,7 @@
 #include <vector>
 #include <fstream>
 #include <algorithm>
+#include <filesystem>
 
 #include "classes/host.hpp"
 #include "classes/ping_row.hpp"
@@ -71,9 +72,33 @@ std::string combine_json(std::vector<PingRow> ping_results){
     return string_stream.str();
 }
 
-// target input params: out folder path?, flood flag, input file in arp-table format
-int main()
+// target input params:
+    // flood flag,
+    // input file in arp-table format? or ip, mac, interface,
+    // number of pings to each host,
+    // nping options (as 1 string?) - default set in monitoring-scripts
+int main(int argc, char* argv[])
 {
+    if(argc!=5){
+        return -1;
+    }
+    std::string flood_flag = std::string(argv[1]);
+    bool is_flood = flood_flag == "1";
+
+    std::string file_path = argv[2];
+    if(!std::filesystem::exists(file_path)){
+        std::clog<< "Path: " << file_path << " does not exist!";
+        return -1;
+    }
+
+    int ping_count = atoi(argv[3]);
+    if(ping_count <= 0 || ping_count > 8){
+        std::clog<<"Ping count has invalid value: " << ping_count << ". Ping count must have values between 1 and 8";
+        return -1;
+    }
+
+    std::string nping_opts = std::string(argv[4]);
+
     int sock = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
     if(sock < 0){
         std::cerr << "Error crating socket\n";
