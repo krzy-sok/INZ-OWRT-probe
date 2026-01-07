@@ -6,6 +6,8 @@
 #include <fstream>
 #include <algorithm>
 #include <filesystem>
+#include <random>
+#include <iomanip>
 
 #include "classes/host.hpp"
 #include "classes/ping_row.hpp"
@@ -96,6 +98,19 @@ void parse_host_file(std::stringstream &line_stream, std::vector<Host> &hosts){
 
 std::string generate_mac_address() {
     // XX-XX-XX-XX-XX-XX
+    std::random_device rng;
+    std::ostringstream str_stream;
+    std::uniform_int_distribution<int> dist(0,256);
+    // exclude multicast and reserved
+    int unicast_bitmask = 0b11111010;
+    // exclude globally unique addresses
+    int locally_unique_bitmask = 0b00000010;
+    int first_octet = dist(rng) & unicast_bitmask | locally_unique_bitmask;
+    str_stream <<  std::setw(2) << std::setfill('0') << std::hex << first_octet;
+    for(int i = 1; i<=6; i++){
+        str_stream <<":" <<  std::setw(2) << std::setfill('0') << std::hex << dist(rng);
+    }
+    return str_stream.str();
 }
 
 // target input params:
