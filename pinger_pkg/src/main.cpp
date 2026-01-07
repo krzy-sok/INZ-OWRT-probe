@@ -44,31 +44,6 @@ std::string combine_json(std::vector<PingRow> ping_results){
     return string_stream.str();
 }
 
-std::vector<Host> read_host_file(std::string file_path)
-{
-    std::vector<Host> hosts = {};
-    std::ifstream arp_cache(file_path);
-    std::string line;
-    // skip file header
-    if(!std::getline(arp_cache, line))
-    {
-        std::cerr<<"Failed to read arp cache!\n";
-        throw std::runtime_error("filed to read arp cache");
-    }
-
-    std::function parser_func = parse_arp_table;
-    if(file_path != ARP_PATH){
-        parser_func = parse_host_file
-    }
-
-    while(std::getline(arp_cache, line))
-    {
-        std::stringstream line_stream(line);
-        parser_func(line_stream, hosts);
-    }
-    return hosts;
-}
-
 void parse_arp_table(std::stringstream &line_stream, std::vector<Host> &hosts){
     // arp format:
     // IP address  HW type  Flags  HW address  Mask  Device
@@ -94,6 +69,31 @@ void parse_host_file(std::stringstream &line_stream, std::vector<Host> &hosts){
     line_stream >> mac;
     line_stream >> interface;
     hosts.push_back(Host(ip, mac, interface));
+}
+
+std::vector<Host> read_host_file(std::string file_path)
+{
+    std::vector<Host> hosts = {};
+    std::ifstream arp_cache(file_path);
+    std::string line;
+    // skip file header
+    if(!std::getline(arp_cache, line))
+    {
+        std::cerr<<"Failed to read arp cache!\n";
+        throw std::runtime_error("filed to read arp cache");
+    }
+
+    std::function parser_func = parse_arp_table;
+    if(file_path != ARP_PATH){
+        parser_func = parse_host_file;
+    }
+
+    while(std::getline(arp_cache, line))
+    {
+        std::stringstream line_stream(line);
+        parser_func(line_stream, hosts);
+    }
+    return hosts;
 }
 
 std::string generate_mac_address() {
@@ -147,7 +147,7 @@ int main(int argc, char* argv[])
     }
     std::clog<<"created socket\n";
 
-    std::vector<Host> hosts = read_host_file();
+    std::vector<Host> hosts = read_host_file(file_path);
     std::vector<PingRow> ping_results = std::vector<PingRow>();
     for(Host host : hosts){
         std::optional<PingRow> ping_res = host.ping(sock);
