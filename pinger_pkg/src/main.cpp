@@ -121,7 +121,8 @@ std::string generate_mac_address() {
     // nping options (as 1 string?) - default set in monitoring-scripts
 int main(int argc, char* argv[])
 {
-    if(argc!=5){
+    if(argc< 4 || argc > 5){
+        std::clog<< "Incorrect argument count! Required arguments:"<<std::endl<<"flood flag \n path to file with target hosts \n number of pings to each host \n optional nping options";
         return -1;
     }
     std::string flood_flag = std::string(argv[1]);
@@ -139,7 +140,11 @@ int main(int argc, char* argv[])
         return -1;
     }
 
-    std::string nping_opts = std::string(argv[4]);
+    std::string nping_opts = "";
+    if(argc == 5){
+        nping_opts = std::string(argv[4]);
+    }
+
 
     int sock = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
     if(sock < 0){
@@ -151,9 +156,11 @@ int main(int argc, char* argv[])
     std::vector<Host> hosts = read_host_file(file_path);
     std::vector<PingRow> ping_results = std::vector<PingRow>();
     for(Host host : hosts){
-        std::optional<PingRow> ping_res = host.ping(sock);
-        if(ping_res.has_value()){
-            ping_results.push_back(ping_res.value());
+        for (int c=0; c<ping_count; c++){
+            std::optional<PingRow> ping_res = host.ping(sock);
+            if(ping_res.has_value()){
+                ping_results.push_back(ping_res.value());
+            }
         }
     }
     std::cout<<combine_json(ping_results);
