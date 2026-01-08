@@ -76,16 +76,17 @@ std::vector<Host> read_host_file(std::string file_path)
     std::vector<Host> hosts = {};
     std::ifstream arp_cache(file_path);
     std::string line;
-    // skip file header
-    if(!std::getline(arp_cache, line))
-    {
-        std::cerr<<"Failed to read arp cache!\n";
-        throw std::runtime_error("filed to read arp cache");
-    }
 
-    std::function parser_func = parse_arp_table;
-    if(file_path != ARP_PATH){
-        parser_func = parse_host_file;
+
+    std::function parser_func = parse_host_file;
+    if(file_path == ARP_PATH){
+        // skip file header
+        if(!std::getline(arp_cache, line))
+        {
+            std::cerr<<"Failed to read arp cache!\n";
+            throw std::runtime_error("filed to read arp cache");
+        }
+        parser_func = parse_arp_table;
     }
 
     while(std::getline(arp_cache, line))
