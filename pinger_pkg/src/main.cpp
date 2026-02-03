@@ -4,6 +4,7 @@
 #include <arpa/inet.h>
 #include <vector>
 #include <fstream>
+#include <sys/time.h>
 #include <algorithm>
 #include <filesystem>
 #include <random>
@@ -16,7 +17,7 @@
 
 #define ARP_PATH       "/proc/net/arp"
 #define DEFAULT_NPING_PARAMS "-udp --rate 100 -c 20 --dest-mac "
-
+#define TIMEOUT_SEC 4
 
 
 void print_ping(Host host, int sock){
@@ -116,6 +117,24 @@ std::string generate_mac_address() {
     return str_stream.str();
 }
 
+void set_socket_options(int sock){
+    int ttl = 64;
+
+    struct timeval tv_timeout;
+    tv_timeout.tv_sec = TIMEOUT_SEC;
+    tv_timeout.tv_usec = 0;
+
+    // set ttl
+    if (setsockopt(sock, SOL_IP, IP_TTL, &ttl, sizeof(ttl)) != 0) {
+        std::cerr <<"Setting socket options to TTL failed!" << std::endl;
+        throw std::runtime_error("filed tset socket options");
+    } else {
+        std::clog<<"Socket set to TTL..." << std::endl;
+    }
+    // set timeout on recive
+    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv_timeout, sizeof tv_timeout);
+}
+
 // target input params:
     // flood flag,
     // input file in arp-table format? or ip, mac, interface,
@@ -153,6 +172,7 @@ int main(int argc, char* argv[])
         exit(-2);
     }
     std::clog<<"created socket\n"<<std::endl;
+    set_socket_options(sock);
 
     std::vector<Host> hosts = read_host_file(file_path);
     std::vector<PingRow> ping_results = std::vector<PingRow>();

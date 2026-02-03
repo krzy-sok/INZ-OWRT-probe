@@ -28,25 +28,10 @@ Host::Host(std::string ip, std::string mac, std::string interface)
 // TODO: modernize to c++ where possible
 std::optional<PingRow> Host::ping(int sock)
 {
-    int ttl = 64;
+    struct timespec t_sent, t_recived;
+
     unsigned char packet_buffer[PING_PKT_S];
     struct icmp_pkt *packet = (struct icmp_pkt *) packet_buffer;
-
-    struct timespec t_sent, t_recived;
-    struct timeval tv_timeout;
-    tv_timeout.tv_sec = TIMEOUT_SEC;
-    tv_timeout.tv_usec = 0;
-
-    // set ttl
-    if (setsockopt(sock, SOL_IP, IP_TTL, &ttl, sizeof(ttl)) != 0) {
-        std::cerr <<"Setting socket options to TTL failed!" << std::endl;
-        return {};
-    } else {
-        std::clog<<"Socket set to TTL..." << std::endl;
-    }
-
-    // set timeout on recive
-    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv_timeout, sizeof tv_timeout);
 
     // compose packet
     // set header

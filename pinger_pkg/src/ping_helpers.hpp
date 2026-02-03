@@ -7,7 +7,6 @@
 
 #define ODDBYTE(v) htons((unsigned short)(v) <<8)
 #define PING_PKT_S 64
-#define TIMEOUT_SEC 4
 
 // since icmphdr does not include data
 // and icmp struct does not send on modern system
