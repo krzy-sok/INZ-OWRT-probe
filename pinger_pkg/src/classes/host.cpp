@@ -1,8 +1,13 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <iostream>
+#include <sstream>
 #include <ctime>
+#include <vector>
 #include <optional>
+#include <fcntl.h>
+#include <signal.h>
+#include <string.h>
 
 #include "host.hpp"
 #include "../ping_helpers.hpp"
@@ -12,6 +17,7 @@ Host::Host(std::string ip, std::string mac, std::string interface)
     _ip = ip;
     _mac = mac;
     _interface = interface;
+    _pid = -1;
     if(inet_aton(ip.data(), &dst.sin_addr) == 0)
     {
         // TODO: dont throw - make the program able to go on or exit
@@ -91,4 +97,71 @@ std::optional<PingRow> Host::ping(int sock)
 
     PingRow ping_res = PingRow(_ip, _mac, _interface, rtt, std::time(nullptr));
     return ping_res;
+}
+
+std::vector<std::string> Host::split_args(std::string nping_args){
+    std::stringstream ss(nping_args);
+
+    std::string token;
+    std::vector<std::string> argv;
+
+    while (getline(ss, token, ' ')){
+        argv.push_back(token);
+    }
+    return argv;
+}
+
+int Host::startFlood(std::string nping_args){
+    int pid = fork();
+    if(pid < 0){
+        std::clog<<"could not fork process for flooding" <<std::endl;
+        return -1;
+    }
+
+    if(pid==0){
+        // abort child process on error
+        int fd = open("/dev/null", O_WRONLY);
+        if(fd<0){
+            std::clog<< "Cannot open /dev/null to redirect nping output"<<std::endl;
+            std::abort();
+        }
+
+        if(dup2(fd, 1) != 1){
+            std::clog<< "Cannot redirect std::cout to /dev/null with dup2"<<std::endl;
+            std::abort();
+        }
+        nping_args += " " + _ip;
+        // std::clog<<std::endl<<"-----" << nping_args <<"-----"<< std::endl;
+        std::vector<std::string> args = split_args(nping_args);
+        std::vector<char *> argv;
+        argv.push_back(const_cast<char *>("nping"));
+        for (std::string& s : args) {
+            argv.push_back(const_cast<char*>(s.c_str()));
+        }
+        argv.push_back(nullptr);
+
+        if(execv("/usr/bin/nping", argv.data())<0){
+            std::clog<< "Cannot call nping!"<<std::endl;
+            std::cerr<<"execv errorno: "<< errno <<std::endl<< "error value"<< strerror(errno)<< std::endl;
+            std::abort();
+        }
+        std::terminate();
+    }
+    else{
+        _pid = pid;
+    }
+    return 1;
+}
+
+void Host::stopFlood(){
+    if(_pid<=0){
+        return;
+    }
+    int res = kill(_pid, SIGTERM);
+    if(res<0){
+        std::clog<<"Cannot terminate nping process with pid: "<<_pid <<std::endl;
+        return;
+    }
+    _pid = -1;
+
 }

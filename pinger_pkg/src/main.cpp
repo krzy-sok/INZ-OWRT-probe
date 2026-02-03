@@ -8,12 +8,14 @@
 #include <filesystem>
 #include <random>
 #include <iomanip>
+#include <thread>
+#include <chrono>
 
 #include "classes/host.hpp"
 #include "classes/ping_row.hpp"
 
 #define ARP_PATH       "/proc/net/arp"
-#define DEFAULT_NPING_PARAMS "-udp --dest-mac 90-E8-68-14-94-44"
+#define DEFAULT_NPING_PARAMS "-udp --rate 100 -c 20 --dest-mac "
 
 
 
@@ -108,7 +110,7 @@ std::string generate_mac_address() {
     int locally_unique_bitmask = 0b00000010;
     int first_octet = dist(rng) & unicast_bitmask | locally_unique_bitmask;
     str_stream <<  std::setw(2) << std::setfill('0') << std::hex << first_octet;
-    for(int i = 1; i<=6; i++){
+    for(int i = 1; i<6; i++){
         str_stream <<":" <<  std::setw(2) << std::setfill('0') << std::hex << dist(rng);
     }
     return str_stream.str();
@@ -122,7 +124,7 @@ std::string generate_mac_address() {
 int main(int argc, char* argv[])
 {
     if(argc< 4 || argc > 5){
-        std::clog<< "Incorrect argument count! Required arguments:"<<std::endl<<"flood flag \n path to file with target hosts \n number of pings to each host \n optional nping options";
+        std::clog<< "Incorrect argument count! Required arguments:"<<std::endl<<"flood flag \n path to file with target hosts \n number of pings to each host \n optional nping options"<<std::endl;
         return -1;
     }
     std::string flood_flag = std::string(argv[1]);
@@ -130,13 +132,13 @@ int main(int argc, char* argv[])
 
     std::string file_path = argv[2];
     if(!std::filesystem::exists(file_path)){
-        std::clog<< "Path: " << file_path << " does not exist!";
+        std::clog<< "Path: " << file_path << " does not exist!"<<std::endl;
         return -1;
     }
 
     int ping_count = atoi(argv[3]);
     if(ping_count <= 0 || ping_count > 8){
-        std::clog<<"Ping count has invalid value: " << ping_count << ". Ping count must have values between 1 and 8";
+        std::clog<<"Ping count has invalid value: " << ping_count << ". Ping count must have values between 1 and 8" <<std::endl;
         return -1;
     }
 
@@ -145,22 +147,32 @@ int main(int argc, char* argv[])
         nping_opts = std::string(argv[4]);
     }
 
-
     int sock = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
     if(sock < 0){
-        std::cerr << "Error crating socket\n";
+        std::cerr << "Error crating socket\n"<<std::endl;
         exit(-2);
     }
-    std::clog<<"created socket\n";
+    std::clog<<"created socket\n"<<std::endl;
 
     std::vector<Host> hosts = read_host_file(file_path);
     std::vector<PingRow> ping_results = std::vector<PingRow>();
     for(Host host : hosts){
+        std::chrono::milliseconds timespan(1000);
+        if(is_flood){
+
+            // std::cout<<"-----------------\n"<< "flood: " << is_flood<<std::endl;
+            host.startFlood(DEFAULT_NPING_PARAMS + generate_mac_address());
+        }
+
         for (int c=0; c<ping_count; c++){
+            std::this_thread::sleep_for(timespan);
             std::optional<PingRow> ping_res = host.ping(sock);
             if(ping_res.has_value()){
                 ping_results.push_back(ping_res.value());
             }
+        }
+        if(is_flood){
+            host.stopFlood();
         }
     }
     std::cout<<combine_json(ping_results);

@@ -1,6 +1,7 @@
 #ifndef PINGROW
 #define PINGROW
 #include <string>
+#include <vector>
 
 class PingRow
 {
