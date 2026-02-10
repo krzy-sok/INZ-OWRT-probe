@@ -20,19 +20,6 @@
 #define TIMEOUT_SEC 4
 
 
-void print_ping(Host host, int sock){
-    auto pingres = host.ping(sock);
-    if(pingres.has_value())
-    {
-        PingRow ping = pingres.value();
-        std::cout<< ping.to_string();
-    }
-    else
-    {
-        std::cout << "Ping to host failed \n";
-    }
-}
-
 std::string combine_json(std::vector<PingRow> ping_results){
     if(ping_results.size() <1){
         return "";
