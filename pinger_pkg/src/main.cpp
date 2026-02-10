@@ -179,14 +179,13 @@ int main(int argc, char* argv[])
     for(Host host : hosts){
         std::chrono::milliseconds timespan(1000);
         if(is_flood){
-
             // std::cout<<"-----------------\n"<< "flood: " << is_flood<<std::endl;
             host.startFlood(DEFAULT_NPING_PARAMS + generate_mac_address());
         }
 
         for (int c=0; c<ping_count; c++){
             std::this_thread::sleep_for(timespan);
-            std::optional<PingRow> ping_res = host.ping(sock);
+            std::optional<PingRow> ping_res = host.ping(sock, is_flood);
             if(ping_res.has_value()){
                 ping_results.push_back(ping_res.value());
             }

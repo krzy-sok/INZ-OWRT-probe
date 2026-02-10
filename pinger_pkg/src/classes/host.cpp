@@ -26,7 +26,7 @@ Host::Host(std::string ip, std::string mac, std::string interface)
     dst.sin_family = AF_INET;
 }
 // TODO: modernize to c++ where possible
-std::optional<PingRow> Host::ping(int sock)
+std::optional<PingRow> Host::ping(int sock, bool flood_flag)
 {
     struct timespec t_sent, t_recived;
 
@@ -80,7 +80,7 @@ std::optional<PingRow> Host::ping(int sock)
     if(recv_hdr)
     std::clog << PING_PKT_S <<" bytes from "<< _ip.data() << " rtt = " << rtt << " ms." << std::endl;
 
-    PingRow ping_res = PingRow(_ip, _mac, _interface, rtt, std::time(nullptr));
+    PingRow ping_res = PingRow(_ip, _mac, _interface, rtt, std::time(nullptr), flood_flag);
     return ping_res;
 }
 

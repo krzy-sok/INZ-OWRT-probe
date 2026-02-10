@@ -17,7 +17,7 @@ class Host
 
     public:
         Host(std::string ip, std::string mac, std::string interface);
-        std::optional<PingRow> ping(int sock);
+        std::optional<PingRow> ping(int sock, bool flood_flag);
         int startFlood(std::string nping_args);
         void stopFlood();
 };
