@@ -4,3 +4,11 @@ sys_ping
 short_ping.c
 .vscode/*
 arp_read
+Testing
+*.cmake
+*.tcl
+*.out
+CMakeFiles
+CMakeCache.txt
+_*
+pinger_pkg/tests/Makefile
