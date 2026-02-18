@@ -29,6 +29,8 @@ Host::Host(std::string ip, std::string mac, std::string interface)
 std::optional<PingRow> Host::ping(int sock, bool flood_flag)
 {
     struct timespec t_sent, t_recived;
+    struct sockaddr_in src;
+    std::optional<PingRow> empty;
 
     unsigned char packet_buffer[PING_PKT_S];
     struct icmp_pkt *packet = (struct icmp_pkt *) packet_buffer;
@@ -45,40 +47,63 @@ std::optional<PingRow> Host::ping(int sock, bool flood_flag)
 
     clock_gettime(0, &t_sent);
 
-    std::clog<<"packet type "<<packet->hdr.type<<" packet code "<< packet->hdr.code << std::endl;
+    // std::clog<<"packet type: "<< packet->hdr.type <<"  packet code: " << packet->hdr.code << std::endl;
     int sent_res = sendto(sock, &packet_buffer, sizeof(packet_buffer), 0, (struct sockaddr *)&dst, sizeof(struct sockaddr));
     if (sent_res <= 0){
         std::cerr << "Failed to send packet! "<< sent_res <<std::endl;
         std::cerr<<"socaddr: " << dst.sin_addr.s_addr <<std::endl;
         std::cerr<<"soc sin family: " << dst.sin_family <<std::endl;
 
-        return {};
+        return empty;
     }
 
     // prepare buffer
     unsigned char reply_buffer[128];
-    socklen_t dst_len = sizeof(struct sockaddr);
+    memset(reply_buffer, 0, sizeof(reply_buffer));
+    socklen_t src_len = sizeof(struct sockaddr);
     // receive reply
-    int recv_res = recvfrom(sock, &reply_buffer, sizeof(reply_buffer), 0, (struct sockaddr *)&dst, &dst_len);
+    int recv_res = recvfrom(sock, &reply_buffer, sizeof(reply_buffer), 0, (struct sockaddr *)&src, &src_len);
     if (recv_res <0){
         std::cerr<<"Failed to receive packet! "<< recv_res<< std::endl;
-        return {};
+        return empty;
     }
-
     clock_gettime(0, &t_recived);
     double rtt = ((double)(t_recived.tv_nsec - t_sent.tv_nsec))/1000000;
 
+
     struct icmp_reply *recv_hdr = (struct icmp_reply *)reply_buffer;
+
+    // code for ICMP protocol == 1
+    if(recv_hdr->ip_hdr.protocol != 1){
+        std::clog<<"Incorrect response protocol! "<< recv_hdr->ip_hdr.protocol <<std::endl;
+        return empty;
+    }
+    if(recv_hdr->ip_hdr.ihl != 5 ){
+        std::clog<<"Unexpected IP header length of" << recv_hdr->ip_hdr.tot_len<< " received! "<<std::endl;
+        return empty;
+    }
+
+    if(src.sin_addr.s_addr != dst.sin_addr.s_addr){
+        std::clog<<"Response has incorrect sender address! Received:"<< src.sin_addr.s_addr << ", expected:" << dst.sin_addr.s_addr <<std::endl;
+        return empty;
+    }
+
     // there is a bug in the kernel with how icmp packets are casted
     // https://blog.benjojo.co.uk/post/linux-icmp-type-69
-    // meaning tahat i need a work around to check type and code as these values are unreliable
-    // or skip this step of validation, sic!
-    if (recv_hdr->icmp_hdr.type != 0 || recv_hdr->icmp_hdr.code != 0){
+    // thats why w custom struct is used for reply casting
+    if (recv_hdr->icmp_hdr.type != ICMP_ECHOREPLY || recv_hdr->icmp_hdr.code != 0){
         std::clog<< "Failed to recive.\ncode: " <<int(recv_hdr->icmp_hdr.code) << " type: " << int(recv_hdr->icmp_hdr.type) << std::endl;
-        return {};
+        return empty;
     }
-    if(recv_hdr)
-    std::clog << PING_PKT_S <<" bytes from "<< _ip.data() << " rtt = " << rtt << " ms." << std::endl;
+
+    if(recv_hdr->icmp_hdr.un.echo.id != packet->hdr.un.echo.id)
+    {
+        std::clog<< "Wrong identifier.\ncode: " <<int(recv_hdr->icmp_hdr.code) << " type: " << int(recv_hdr->icmp_hdr.type) << std::endl
+            << "daddr: " << recv_hdr->ip_hdr.daddr << "proto:  " << recv_hdr->ip_hdr.protocol << std::endl;
+        std::clog << PING_PKT_S <<" bytes from "<< _ip.data() << " rtt = " << rtt << " ms." << std::endl;
+        return empty;
+    }
+    std::clog <<"recv.id: "<< recv_hdr->icmp_hdr.un.echo.id << " sent.id: "<<packet->hdr.un.echo.id<<std::endl;
 
     PingRow ping_res = PingRow(_ip, _mac, _interface, rtt, std::time(nullptr), flood_flag);
     return ping_res;

@@ -1,8 +1,9 @@
 #ifndef HOST
-#define HOSt
+#define HOST
 #include <string>
 #include <netdb.h>
 #include <optional>
+
 #include "ping_row.hpp"
 
 class Host
