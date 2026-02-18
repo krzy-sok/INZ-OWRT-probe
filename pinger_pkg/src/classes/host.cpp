@@ -70,16 +70,12 @@ std::optional<PingRow> Host::ping(int sock, bool flood_flag)
     clock_gettime(0, &t_recived);
     double rtt = ((double)(t_recived.tv_nsec - t_sent.tv_nsec))/1000000;
 
+    struct iphdr* ip_hdr = (struct iphdr *)reply_buffer;
+    int ip_hdr_len = ip_hdr->ihl * 4;
+    struct icmphdr *icmp_hdr = (struct icmphdr *)(reply_buffer + ip_hdr_len);
 
-    struct icmp_reply *recv_hdr = (struct icmp_reply *)reply_buffer;
-
-    // code for ICMP protocol == 1
-    if(recv_hdr->ip_hdr.protocol != 1){
-        std::clog<<"Incorrect response protocol! "<< recv_hdr->ip_hdr.protocol <<std::endl;
-        return empty;
-    }
-    if(recv_hdr->ip_hdr.ihl != 5 ){
-        std::clog<<"Unexpected IP header length of" << recv_hdr->ip_hdr.tot_len<< " received! "<<std::endl;
+    if(ip_hdr->protocol != IPPROTO_ICMP){
+        std::clog<<"Incorrect response protocol! "<< ip_hdr->protocol <<std::endl;
         return empty;
     }
 
@@ -88,22 +84,19 @@ std::optional<PingRow> Host::ping(int sock, bool flood_flag)
         return empty;
     }
 
-    // there is a bug in the kernel with how icmp packets are casted
-    // https://blog.benjojo.co.uk/post/linux-icmp-type-69
-    // thats why w custom struct is used for reply casting
-    if (recv_hdr->icmp_hdr.type != ICMP_ECHOREPLY || recv_hdr->icmp_hdr.code != 0){
-        std::clog<< "Failed to recive.\ncode: " <<int(recv_hdr->icmp_hdr.code) << " type: " << int(recv_hdr->icmp_hdr.type) << std::endl;
+    if (icmp_hdr->type != ICMP_ECHOREPLY || icmp_hdr->code != 0){
+        std::clog<< "Failed to recive.\ncode: " <<int(icmp_hdr->code) << " type: " << int(icmp_hdr->type) << std::endl;
         return empty;
     }
 
-    if(recv_hdr->icmp_hdr.un.echo.id != packet->hdr.un.echo.id)
+    if(icmp_hdr->un.echo.id != packet->hdr.un.echo.id)
     {
-        std::clog<< "Wrong identifier.\ncode: " <<int(recv_hdr->icmp_hdr.code) << " type: " << int(recv_hdr->icmp_hdr.type) << std::endl
-            << "daddr: " << recv_hdr->ip_hdr.daddr << "proto:  " << recv_hdr->ip_hdr.protocol << std::endl;
+        std::clog<< "Wrong identifier.\ncode: " <<int(icmp_hdr->code) << " type: " << int(icmp_hdr->type) << std::endl
+            << "daddr: " << ip_hdr->daddr << "proto:  " << ip_hdr->protocol << std::endl;
         std::clog << PING_PKT_S <<" bytes from "<< _ip.data() << " rtt = " << rtt << " ms." << std::endl;
         return empty;
     }
-    std::clog <<"recv.id: "<< recv_hdr->icmp_hdr.un.echo.id << " sent.id: "<<packet->hdr.un.echo.id<<std::endl;
+    std::clog <<"recv.id: "<< icmp_hdr->un.echo.id << " sent.id: "<<packet->hdr.un.echo.id<<std::endl;
 
     PingRow ping_res = PingRow(_ip, _mac, _interface, rtt, std::time(nullptr), flood_flag);
     return ping_res;
