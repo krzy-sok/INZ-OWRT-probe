@@ -16,14 +16,6 @@ struct icmp_pkt
     char msg[PING_PKT_S - sizeof(struct icmphdr)];
 };
 
-// since recv from on raw socket is bugged and reads IP header
-// we need to facilitate the ipheader
-struct icmp_reply
-{
-	struct iphdr ip_hdr;
-    struct icmphdr icmp_hdr;
-};
-
 // Calculate the checksum (RFC 1071)
 unsigned short in_cksum(const unsigned short *addr, int len, unsigned short csum)
 {
