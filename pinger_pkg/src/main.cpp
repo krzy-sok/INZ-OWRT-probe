@@ -20,15 +20,15 @@
 #define TIMEOUT_SEC 4
 
 
-std::string combine_json(std::vector<PingRow> ping_results){
-    if(ping_results.size() <1){
+std::string combine_json(std::vector<Host> hosts){
+    if(hosts.size() <1){
         return "";
     }
     std::ostringstream string_stream;
     string_stream << "\"probes\":[";
-    string_stream << ping_results[0].to_json();
-    for(long unsigned int i = 1; i<ping_results.size(); i++){
-        string_stream << ", " << ping_results[i].to_json();
+    string_stream << hosts[0].to_json();
+    for(long unsigned int i = 1; i<hosts.size(); i++){
+        string_stream << ", " << hosts[i].to_json();
     }
     string_stream << "]";
     return string_stream.str();
@@ -130,7 +130,7 @@ void set_socket_options(int sock){
 int main(int argc, char* argv[])
 {
     if(argc< 4 || argc > 5){
-        std::clog<< "Incorrect argument count! Required arguments:"<<std::endl<<"flood flag \n path to file with target hosts \n number of pings to each host \n optional nping options"<<std::endl;
+        std::clog<< "Incorrect argument count! Required arguments:"<<std::endl<<"flood flag: 0/1 \n path to file with target hosts \n number of pings to each host \n optional nping options"<<std::endl;
         return -1;
     }
     std::string flood_flag = std::string(argv[1]);
@@ -162,25 +162,22 @@ int main(int argc, char* argv[])
     set_socket_options(sock);
 
     std::vector<Host> hosts = read_host_file(file_path);
-    std::vector<PingRow> ping_results = std::vector<PingRow>();
-    for(Host host : hosts){
+    for(int i =0; i<hosts.size(); i++){
         std::chrono::milliseconds timespan(1000);
         if(is_flood){
             // std::cout<<"-----------------\n"<< "flood: " << is_flood<<std::endl;
-            host.startFlood(DEFAULT_NPING_PARAMS + generate_mac_address());
+            hosts[i].startFlood(DEFAULT_NPING_PARAMS + generate_mac_address());
         }
 
         for (int c=0; c<ping_count; c++){
             std::this_thread::sleep_for(timespan);
-            std::optional<PingRow> ping_res = host.ping(sock, is_flood);
-            if(ping_res.has_value()){
-                ping_results.push_back(ping_res.value());
-            }
+            hosts[i].ping(sock, is_flood);
+
         }
         if(is_flood){
-            host.stopFlood();
+            hosts[i].stopFlood();
         }
     }
-    std::cout<<combine_json(ping_results);
+    std::cout<<combine_json(hosts)<<std::endl;
     return 0;
 }

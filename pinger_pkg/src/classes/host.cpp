@@ -18,6 +18,7 @@ Host::Host(std::string ip, std::string mac, std::string interface)
     _mac = mac;
     _interface = interface;
     _pid = -1;
+    _flood_flag = 0;
     if(inet_aton(ip.data(), &dst.sin_addr) == 0)
     {
         // TODO: dont throw - make the program able to go on or exit
@@ -26,11 +27,10 @@ Host::Host(std::string ip, std::string mac, std::string interface)
     dst.sin_family = AF_INET;
 }
 // TODO: modernize to c++ where possible
-std::optional<PingRow> Host::ping(int sock, bool flood_flag)
+void Host::ping(int sock, bool flood_flag)
 {
     struct timespec t_sent, t_recived;
     struct sockaddr_in src;
-    std::optional<PingRow> empty;
 
     unsigned char packet_buffer[PING_PKT_S];
     struct icmp_pkt *packet = (struct icmp_pkt *) packet_buffer;
@@ -54,7 +54,7 @@ std::optional<PingRow> Host::ping(int sock, bool flood_flag)
         std::cerr<<"socaddr: " << dst.sin_addr.s_addr <<std::endl;
         std::cerr<<"soc sin family: " << dst.sin_family <<std::endl;
 
-        return empty;
+        return;
     }
 
     // prepare buffer
@@ -65,7 +65,7 @@ std::optional<PingRow> Host::ping(int sock, bool flood_flag)
     int recv_res = recvfrom(sock, &reply_buffer, sizeof(reply_buffer), 0, (struct sockaddr *)&src, &src_len);
     if (recv_res <0){
         std::cerr<<"Failed to receive packet! "<< recv_res<< std::endl;
-        return empty;
+        return;
     }
     clock_gettime(0, &t_recived);
     double rtt = ((double)(t_recived.tv_nsec - t_sent.tv_nsec))/1000000;
@@ -76,17 +76,17 @@ std::optional<PingRow> Host::ping(int sock, bool flood_flag)
 
     if(ip_hdr->protocol != IPPROTO_ICMP){
         std::clog<<"Incorrect response protocol! "<< ip_hdr->protocol <<std::endl;
-        return empty;
+        return;
     }
 
     if(src.sin_addr.s_addr != dst.sin_addr.s_addr){
         std::clog<<"Response has incorrect sender address! Received:"<< src.sin_addr.s_addr << ", expected:" << dst.sin_addr.s_addr <<std::endl;
-        return empty;
+        return;
     }
 
     if (icmp_hdr->type != ICMP_ECHOREPLY || icmp_hdr->code != 0){
         std::clog<< "Failed to recive.\ncode: " <<int(icmp_hdr->code) << " type: " << int(icmp_hdr->type) << std::endl;
-        return empty;
+        return;
     }
 
     if(icmp_hdr->un.echo.id != packet->hdr.un.echo.id)
@@ -94,12 +94,12 @@ std::optional<PingRow> Host::ping(int sock, bool flood_flag)
         std::clog<< "Wrong identifier.\ncode: " <<int(icmp_hdr->code) << " type: " << int(icmp_hdr->type) << std::endl
             << "daddr: " << ip_hdr->daddr << "proto:  " << ip_hdr->protocol << std::endl;
         std::clog << PING_PKT_S <<" bytes from "<< _ip.data() << " rtt = " << rtt << " ms." << std::endl;
-        return empty;
+        return;
     }
-    std::clog <<"recv.id: "<< icmp_hdr->un.echo.id << " sent.id: "<<packet->hdr.un.echo.id<<std::endl;
+    // std::clog <<"recv.id: "<< icmp_hdr->un.echo.id << " sent.id: "<<packet->hdr.un.echo.id<<std::endl;
 
-    PingRow ping_res = PingRow(_ip, _mac, _interface, rtt, std::time(nullptr), flood_flag);
-    return ping_res;
+    PingRow ping_res = PingRow(rtt, std::time(nullptr));
+    ping_results.push_back(ping_res);
 }
 
 std::vector<std::string> Host::split_args(std::string nping_args){
@@ -148,9 +148,11 @@ int Host::startFlood(std::string nping_args){
             std::cerr<<"execv errorno: "<< errno <<std::endl<< "error value"<< strerror(errno)<< std::endl;
             std::abort();
         }
+
         std::terminate();
     }
     else{
+        _flood_flag = 1;
         _pid = pid;
     }
     return 1;
@@ -166,5 +168,21 @@ void Host::stopFlood(){
         return;
     }
     _pid = -1;
+}
 
+std::string Host::to_json(){
+    std::ostringstream string_stream;
+    string_stream << "{ \"ip\":"<< _ip
+        << "\", \"mac\":\"" << _mac << "\""
+        << "\", \" flood_flag\": "<< _flood_flag
+        << ", \" interface\":\""<< _interface
+        << "\", \"probes\": [";
+    if (ping_results.size() >0){
+        string_stream << ping_results[0].to_json();
+    }
+    for(long unsigned int i=1; i<ping_results.size(); i++){
+        string_stream <<","<< ping_results[i].to_json();
+    }
+    string_stream << "]}";
+    return string_stream.str();
 }
