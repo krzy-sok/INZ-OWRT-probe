@@ -172,11 +172,11 @@ void Host::stopFlood(){
 
 std::string Host::to_json(){
     std::ostringstream string_stream;
-    string_stream << "{ \"ip\":"<< _ip
-        << "\", \"mac\":\"" << _mac << "\""
-        << "\", \" flood_flag\": "<< _flood_flag
-        << ", \" interface\":\""<< _interface
-        << "\", \"probes\": [";
+    string_stream << "{ \"ip\": \""<< _ip <<"\""
+        << ", \"mac\":\"" << _mac << "\""
+        << ", \"flood_flag\": "<< _flood_flag
+        << ", \"interface\":\""<< _interface << "\""
+        << ", \"probes\": [";
     if (ping_results.size() >0){
         string_stream << ping_results[0].to_json();
     }

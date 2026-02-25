@@ -17,8 +17,9 @@ std::string PingRow::to_string()
 std::string PingRow::to_json()
 {
     std::ostringstream string_stream;
-    string_stream << "{ \"rtt\": " << _rtt
+    string_stream << "{"
+        << "\"rtt\": " << _rtt
         << ", \"timestamp\":" << _timestamp
-        <<"\"}";
+        <<"}";
     return string_stream.str();
 }
