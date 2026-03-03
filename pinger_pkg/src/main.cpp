@@ -11,12 +11,15 @@
 #include <iomanip>
 #include <thread>
 #include <chrono>
+#include <cmath>
 
 #include "classes/host.hpp"
 #include "classes/ping_row.hpp"
 
 #define ARP_PATH       "/proc/net/arp"
-#define DEFAULT_NPING_PARAMS "-udp --rate 100 -c 20 --dest-mac "
+// #define DEFAULT_NPING_PARAMS "-udp --rate 1000 -c 2000 --dest-mac "
+#define NPING_MODE "-tcp"
+#define NPING_RATE 1000
 #define TIMEOUT_SEC 4
 
 
@@ -162,16 +165,30 @@ int main(int argc, char* argv[])
     set_socket_options(sock);
 
     std::vector<Host> hosts = read_host_file(file_path);
-    for(int i =0; i<hosts.size(); i++){
-        std::chrono::milliseconds timespan(1000);
+
+    int delay = 1000;
+
+    std::ostringstream nping_param;
+    if(nping_opts != ""){
+        nping_param << nping_opts;
+    }
+    else{
+        nping_param << NPING_MODE
+            << " --rate "<< NPING_RATE
+            << " -c " << NPING_RATE * std::ceil(delay * ping_count /1000.0)
+            << " --dest-mac " << generate_mac_address();
+    }
+
+    for(unsigned int i =0; i<hosts.size(); i++){
         if(is_flood){
             // std::cout<<"-----------------\n"<< "flood: " << is_flood<<std::endl;
-            hosts[i].startFlood(DEFAULT_NPING_PARAMS + generate_mac_address());
+            hosts[i].startFlood(nping_param.str());
         }
 
+        std::chrono::milliseconds timespan(delay);
         for (int c=0; c<ping_count; c++){
             std::this_thread::sleep_for(timespan);
-            hosts[i].ping(sock, is_flood);
+            hosts[i].ping(sock);
 
         }
         if(is_flood){

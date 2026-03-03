@@ -27,7 +27,7 @@ Host::Host(std::string ip, std::string mac, std::string interface)
     dst.sin_family = AF_INET;
 }
 // TODO: modernize to c++ where possible
-void Host::ping(int sock, bool flood_flag)
+void Host::ping(int sock)
 {
     struct timespec t_sent, t_recived;
     struct sockaddr_in src;
@@ -115,6 +115,9 @@ std::vector<std::string> Host::split_args(std::string nping_args){
 }
 
 int Host::startFlood(std::string nping_args){
+    nping_args = nping_args + " " + _ip;
+    std::clog<<"nping args: "<<nping_args <<std::endl;
+
     int pid = fork();
     if(pid < 0){
         std::clog<<"could not fork process for flooding" <<std::endl;

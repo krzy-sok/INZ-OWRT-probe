@@ -20,7 +20,7 @@ class Host
 
     public:
         Host(std::string ip, std::string mac, std::string interface);
-        void ping(int sock, bool flood_flag);
+        void ping(int sock);
         int startFlood(std::string nping_args);
         void stopFlood();
         std::string to_json();
