@@ -11,6 +11,7 @@ class hostFileReader
 {
     private:
         std::string _filepath;
+        // parser_func;
         std::vector<std::array<std::string, 3>> include_hosts;
         std::vector<std::array<std::string, 3>> _hosts;
         // final once created

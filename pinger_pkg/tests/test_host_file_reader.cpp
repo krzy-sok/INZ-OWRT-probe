@@ -1,5 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <sstream>
+#include <iostream>
+#include <fstream>
 
 
 #define private public
@@ -162,6 +164,30 @@ TEST_CASE("parse line range", "[parse],[single],[line]"){
         REQUIRE(reader.include_hosts[i][1] == "N/A");
         REQUIRE(reader.include_hosts[i][2] == "eth0");
     }
+}
+
+TEST_CASE("parse include only file",  "[parse],[file],[include]"){
+    std::ofstream testHosts("./test-hosts");
+    testHosts << "include 10.0.0.1 n/a eth0"<<std::endl;
+    testHosts << "include 10.0.0.10-10.0.0.20 n/a eth0" << std::endl;
+    testHosts.close();
+
+    hostFileReader reader = hostFileReader("./test-hosts");
+    std::vector<Host> hosts = reader.read_host_file();
+    REQUIRE(reader.include_hosts.size() == 12);
+    REQUIRE(hosts.size() == 12);
+    REQUIRE(hosts[0]._ip == "10.0.0.1");
+    REQUIRE(hosts[0]._mac == "n/a");
+    REQUIRE(hosts[0]._interface == "eth0");
+
+    std::string partial_ip = "10.0.0.";
+    for(int i=1; i<11; i++){
+        REQUIRE(hosts[i]._ip == partial_ip + std::to_string(i+9));
+        REQUIRE(hosts[i]._mac == "n/a");
+        REQUIRE(hosts[i]._interface == "eth0");
+    }
+
+    std::remove("./test-hosts");
 }
 
 // TEST_CASE("add host wildcard", "[include],[wildcard]"){

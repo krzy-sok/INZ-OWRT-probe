@@ -23,7 +23,7 @@ list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
 # include(AddCatch2)
 
 include_directories(
-  ../src/
+  ../src/ ../src/classes
 )
 
 add_library(
@@ -32,13 +32,20 @@ add_library(
 add_library(
   ip_range ../src/classes/helpers/ip_range.cpp
 )
+add_library(
+  pingrow ../src/classes/ping_row.cpp
+)
+add_library(
+  host ../src/classes/host.cpp
+)
+
 
 add_executable(tests.out
     test_host_file_reader.cpp
 )
 
 #                                      | here also hpp tested code
-target_link_libraries(tests.out PRIVATE file_reader Catch2::Catch2WithMain)
+target_link_libraries(tests.out PRIVATE file_reader host pingrow Catch2::Catch2WithMain)
 
 
 include(CTest)

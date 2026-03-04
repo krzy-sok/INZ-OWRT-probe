@@ -14,7 +14,21 @@
 
 #define ARP_PATH       "/proc/net/arp"
 
-
+void hostFileReader::parse_arp_line(std::stringstream &line_stream){
+    // arp format:
+    // IP address  HW type  Flags  HW address  Mask  Device
+    std::string ip;
+    std::string mac;
+    std::string interface;
+    std::string _;
+    line_stream >> ip;
+    line_stream >> _;
+    line_stream >> _;
+    line_stream >> mac;
+    line_stream >> _;
+    line_stream >> interface;
+    hosts.push_back(Host(ip, mac, interface));
+}
 
 std::optional<ipRange> hostFileReader::try_parse_ip_range(std::string range){
     std::stringstream ss(range);
@@ -114,6 +128,39 @@ void hostFileReader::parse_host_line(std::stringstream &line_stream){
     }
 }
 
+
+std::vector<Host> hostFileReader::read_host_file(){
+    std::vector<Host> hosts = {};
+    std::ifstream arp_cache(_filepath);
+    std::string line;
+
+    // std::function<void(std::stringstream&)> parser_func;
+    // parser_func =
+    void (hostFileReader::*parser_func)(std::stringstream&) = nullptr;
+    parser_func = &hostFileReader::parse_host_line;
+    if(_filepath == ARP_PATH){
+        // skip file header
+        if(!std::getline(arp_cache, line))
+        {
+            std::cerr<<"Failed to read arp cache!\n";
+            throw std::runtime_error("filed to read arp cache");
+        }
+        parser_func = &hostFileReader::parse_arp_line;
+    }
+
+    while(std::getline(arp_cache, line))
+    {
+        std::stringstream line_stream(line);
+        parse_host_line(line_stream);
+        // (this->*parser_func)(line_stream);
+    }
+
+    for(std::array<std::string,3> entry : include_hosts){
+        hosts.push_back(Host(entry[0], entry[1], entry[2]));
+    }
+
+    return hosts;
+}
 
 
 
