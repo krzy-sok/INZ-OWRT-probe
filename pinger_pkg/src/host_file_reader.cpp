@@ -57,7 +57,7 @@ hostFileReader::hostFileReader(std::string filepath){
     _filepath = filepath;
 }
 
-void hostFileReader::add_host(std::stringstream &line_stream)
+void hostFileReader::add_host(std::stringstream &line_stream,  std::vector<std::array<std::string, 3>> &target)
 {
     std::string ip;
     std::string mac;
@@ -66,35 +66,22 @@ void hostFileReader::add_host(std::stringstream &line_stream)
     line_stream >> mac;
     line_stream >> interface;
 
-    add_single_host(ip, mac, interface) || add_host_range(ip, mac, interface) || add_host_wildcard(ip, mac, interface);
+    add_single_host(ip, mac, interface, target) || add_host_range(ip, mac, interface, target) || add_host_wildcard(ip, mac, interface, target);
     return;
 }
 
-void hostFileReader::exclude_host(std::stringstream &line_stream)
-{
-    // std::string ip;
-    // std::string mac;
-    // std::string interface;
-    // line_stream >> ip;
-    // line_stream >> mac;
-    // line_stream >> interface;
-
-    // exclude_single_host(ip, mac, interface) || exclude_host_range(ip, mac, interface) || add_host_wildcard(ip, mac, interface);
-    return;
-}
-
-bool hostFileReader::add_single_host(std::string ip, std::string mac, std::string interface){
+bool hostFileReader::add_single_host(std::string ip, std::string mac, std::string interface,  std::vector<std::array<std::string, 3>> &target){
     in_addr addr;
     if(inet_aton(ip.data(), &addr) == 0){
         return false;
     }
 
-    include_hosts.push_back({ip, mac, interface});
+    target.push_back({ip, mac, interface});
 
     return true;
 }
 
-bool hostFileReader::add_host_range(std::string ip, std::string mac, std::string interface)
+bool hostFileReader::add_host_range(std::string ip, std::string mac, std::string interface,  std::vector<std::array<std::string, 3>> &target)
 {
     std::optional<ipRange> range_res = try_parse_ip_range(ip);
     if(!range_res.has_value()){
@@ -105,13 +92,13 @@ bool hostFileReader::add_host_range(std::string ip, std::string mac, std::string
     std::string curr_addr = range.next_address();
     while(curr_addr !=""){
         // include_hosts.push_back(new Host(curr_addr, mac, interface));
-        include_hosts.push_back(std::array<std::string, 3>{{curr_addr, mac, interface}});
+        target.push_back(std::array<std::string, 3>{{curr_addr, mac, interface}});
         curr_addr = range.next_address();
     }
     return true;
 }
 
-bool hostFileReader::add_host_wildcard(std::string ip, std::string mac, std::string interface)
+bool hostFileReader::add_host_wildcard(std::string ip, std::string mac, std::string interface,  std::vector<std::array<std::string, 3>> &target)
 {
     return false;
 }
@@ -121,10 +108,10 @@ void hostFileReader::parse_host_line(std::stringstream &line_stream){
     line_stream >> action;
 
     if(action == "include"){
-        add_host(line_stream);
+        add_host(line_stream, this->include_hosts);
     }
     else if(action == "exclude"){
-        exclude_host(line_stream);
+        add_host(line_stream, this->exclude_hosts);
     }
 }
 
@@ -155,10 +142,15 @@ std::vector<Host> hostFileReader::read_host_file(){
         // (this->*parser_func)(line_stream);
     }
 
-    for(std::array<std::string,3> entry : include_hosts){
+    std::vector<std::array<std::string, 3>> diff;
+
+    std::set_difference(include_hosts.begin(), include_hosts.end(),
+        exclude_hosts.begin(), exclude_hosts.end(),
+        std::inserter(diff, diff.begin()));
+
+    for(std::array<std::string,3> entry : diff){
         hosts.push_back(Host(entry[0], entry[1], entry[2]));
     }
-
     return hosts;
 }
 

@@ -20,7 +20,7 @@
 TEST_CASE("add single host", "[include],[single]"){
     hostFileReader reader = hostFileReader("");
     std::array<std::string, 3> parsed_line = {"10.0.0.1", "00-15-5D-2A-E7-14", "eth0"};
-    bool res = reader.add_single_host("10.0.0.1", "00-15-5D-2A-E7-14", "eth0");
+    bool res = reader.add_single_host("10.0.0.1", "00-15-5D-2A-E7-14", "eth0", reader.include_hosts);
 
     REQUIRE(res);
     REQUIRE(reader.include_hosts.size() == 1);
@@ -32,7 +32,7 @@ TEST_CASE("add single host", "[include],[single]"){
 
 TEST_CASE("add single host with range", "[include],[single],[negative]"){
     hostFileReader reader = hostFileReader("");
-    bool res = reader.add_single_host("10.0.0.1-10.0.0.10", "00-15-5D-2A-E7-14", "eth0");
+    bool res = reader.add_single_host("10.0.0.1-10.0.0.10", "00-15-5D-2A-E7-14", "eth0", reader.include_hosts);
 
     REQUIRE(!res);
     REQUIRE(reader.include_hosts.size() == 0);
@@ -40,7 +40,7 @@ TEST_CASE("add single host with range", "[include],[single],[negative]"){
 
 TEST_CASE("add single host with wildcard", "[include],[single],[negative]"){
     hostFileReader reader = hostFileReader("");
-    bool res = reader.add_single_host("10.0.0.00*", "00-15-5D-2A-E7-14", "eth0");
+    bool res = reader.add_single_host("10.0.0.00*", "00-15-5D-2A-E7-14", "eth0", reader.include_hosts);
 
     REQUIRE(!res);
     REQUIRE(reader.include_hosts.size() == 0);
@@ -48,7 +48,7 @@ TEST_CASE("add single host with wildcard", "[include],[single],[negative]"){
 
 TEST_CASE("add single host with invalid ip", "[include],[single],[negative]"){
     hostFileReader reader = hostFileReader("");
-    bool res = reader.add_single_host("10.0.0.261", "00-15-5D-2A-E7-14", "eth0");
+    bool res = reader.add_single_host("10.0.0.261", "00-15-5D-2A-E7-14", "eth0", reader.include_hosts);
 
     REQUIRE(!res);
     REQUIRE(reader.include_hosts.size() == 0);
@@ -57,7 +57,7 @@ TEST_CASE("add single host with invalid ip", "[include],[single],[negative]"){
 
 TEST_CASE("add host range", "[include],[range]"){
     hostFileReader reader = hostFileReader("");
-    bool res = reader.add_host_range("10.0.0.1-10.0.0.10", "N/A", "eth0");
+    bool res = reader.add_host_range("10.0.0.1-10.0.0.10", "N/A", "eth0", reader.include_hosts);
 
     REQUIRE(res);
     REQUIRE(reader.include_hosts.size() == 10);
@@ -73,7 +73,7 @@ TEST_CASE("add host range", "[include],[range]"){
 
 TEST_CASE("add host range with single host", "[include],[range],[negative]"){
     hostFileReader reader = hostFileReader("");
-    bool res = reader.add_host_range("10.0.0.1", "N/A", "eth0");
+    bool res = reader.add_host_range("10.0.0.1", "N/A", "eth0", reader.include_hosts);
 
     REQUIRE(!res);
     REQUIRE(reader.include_hosts.size() == 0);
@@ -81,7 +81,7 @@ TEST_CASE("add host range with single host", "[include],[range],[negative]"){
 
 TEST_CASE("add host range with wildcard", "[include],[range],[negative]"){
     hostFileReader reader = hostFileReader("");
-    bool res = reader.add_host_range("10.0.0.00*", "N/A", "eth0");
+    bool res = reader.add_host_range("10.0.0.00*", "N/A", "eth0", reader.include_hosts);
 
     REQUIRE(!res);
     REQUIRE(reader.include_hosts.size() == 0);
@@ -89,7 +89,7 @@ TEST_CASE("add host range with wildcard", "[include],[range],[negative]"){
 
 TEST_CASE("add host range with invalid ip", "[include],[range],[negative]"){
     hostFileReader reader = hostFileReader("");
-    bool res = reader.add_host_range("10.0.0.251-10.0.0.261", "N/A", "eth0");
+    bool res = reader.add_host_range("10.0.0.251-10.0.0.261", "N/A", "eth0", reader.include_hosts);
 
     REQUIRE(!res);
     REQUIRE(reader.include_hosts.size() == 0);
@@ -150,6 +150,19 @@ TEST_CASE("parse line single host", "[parse],[single],[line]"){
     REQUIRE(reader.include_hosts[0][2] == parsed_line[2]);
 }
 
+TEST_CASE("parse line single host exclude", "[parse],[single],[line],[exclude]"){
+    hostFileReader reader = hostFileReader("");
+    std::stringstream line("exclude 10.0.0.1 00-15-5D-2A-E7-14 eth0");
+    std::array<std::string, 3> parsed_line = {"10.0.0.1", "00-15-5D-2A-E7-14", "eth0"};
+    reader.parse_host_line(line);
+
+    REQUIRE(reader.exclude_hosts.size() == 1);
+    REQUIRE(reader.exclude_hosts[0].size() == 3);
+    REQUIRE(reader.exclude_hosts[0][0] == parsed_line[0]);
+    REQUIRE(reader.exclude_hosts[0][1] == parsed_line[1]);
+    REQUIRE(reader.exclude_hosts[0][2] == parsed_line[2]);
+}
+
 TEST_CASE("parse line range", "[parse],[single],[line]"){
     hostFileReader reader = hostFileReader("");
     std::stringstream line("include 10.0.0.1-10.0.0.10 N/A eth0");
@@ -163,6 +176,23 @@ TEST_CASE("parse line range", "[parse],[single],[line]"){
         REQUIRE(reader.include_hosts[i][0] == partial_ip + std::to_string(i+1));
         REQUIRE(reader.include_hosts[i][1] == "N/A");
         REQUIRE(reader.include_hosts[i][2] == "eth0");
+    }
+}
+
+TEST_CASE("parse line range exclude", "[parse],[single],[line],[exclude]"){
+    hostFileReader reader = hostFileReader("");
+    std::stringstream line("exclude 10.0.0.1-10.0.0.10 N/A eth0");
+    reader.parse_host_line(line);
+
+    REQUIRE(reader.exclude_hosts.size() == 10);
+    REQUIRE(reader.include_hosts.size() == 0);
+
+    std::string partial_ip = "10.0.0.";
+    for(int i=0; i<10; i++){
+        REQUIRE(reader.exclude_hosts[i].size() == 3);
+        REQUIRE(reader.exclude_hosts[i][0] == partial_ip + std::to_string(i+1));
+        REQUIRE(reader.exclude_hosts[i][1] == "N/A");
+        REQUIRE(reader.exclude_hosts[i][2] == "eth0");
     }
 }
 
@@ -183,6 +213,58 @@ TEST_CASE("parse include only file",  "[parse],[file],[include]"){
     std::string partial_ip = "10.0.0.";
     for(int i=1; i<11; i++){
         REQUIRE(hosts[i]._ip == partial_ip + std::to_string(i+9));
+        REQUIRE(hosts[i]._mac == "n/a");
+        REQUIRE(hosts[i]._interface == "eth0");
+    }
+
+    std::remove("./test-hosts");
+}
+
+TEST_CASE("parse file include first",  "[parse],[file],[include],[exclude]"){
+    std::ofstream testHosts("./test-hosts");
+
+    testHosts << "include 10.0.0.10-10.0.0.20 n/a eth0" << std::endl;
+    testHosts << "exclude 10.0.0.11 n/a eth0"<<std::endl;
+    testHosts.close();
+
+    hostFileReader reader = hostFileReader("./test-hosts");
+    std::vector<Host> hosts = reader.read_host_file();
+    REQUIRE(reader.include_hosts.size() == 11);
+    REQUIRE(reader.exclude_hosts.size() == 1);
+    REQUIRE(hosts.size() == 10);
+    REQUIRE(hosts[0]._ip == "10.0.0.10");
+    REQUIRE(hosts[0]._mac == "n/a");
+    REQUIRE(hosts[0]._interface == "eth0");
+
+    std::string partial_ip = "10.0.0.";
+    for(int i=1; i<9; i++){
+        REQUIRE(hosts[i]._ip == partial_ip + std::to_string(i+11));
+        REQUIRE(hosts[i]._mac == "n/a");
+        REQUIRE(hosts[i]._interface == "eth0");
+    }
+
+    std::remove("./test-hosts");
+}
+
+TEST_CASE("parse file include second",  "[parse],[file],[include],[exclude]"){
+    std::ofstream testHosts("./test-hosts");
+
+    testHosts << "exclude 10.0.0.11 n/a eth0"<<std::endl;
+    testHosts << "include 10.0.0.10-10.0.0.20 n/a eth0" << std::endl;
+    testHosts.close();
+
+    hostFileReader reader = hostFileReader("./test-hosts");
+    std::vector<Host> hosts = reader.read_host_file();
+    REQUIRE(reader.include_hosts.size() == 11);
+    REQUIRE(reader.exclude_hosts.size() == 1);
+    REQUIRE(hosts.size() == 10);
+    REQUIRE(hosts[0]._ip == "10.0.0.10");
+    REQUIRE(hosts[0]._mac == "n/a");
+    REQUIRE(hosts[0]._interface == "eth0");
+
+    std::string partial_ip = "10.0.0.";
+    for(int i=1; i<9; i++){
+        REQUIRE(hosts[i]._ip == partial_ip + std::to_string(i+11));
         REQUIRE(hosts[i]._mac == "n/a");
         REQUIRE(hosts[i]._interface == "eth0");
     }
