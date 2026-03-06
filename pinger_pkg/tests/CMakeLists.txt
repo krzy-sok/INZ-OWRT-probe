@@ -33,6 +33,9 @@ add_library(
   ip_range ../src/classes/helpers/ip_range.cpp
 )
 add_library(
+  ip_wildcard ../src/classes/helpers/ip_wildcard.cpp
+)
+add_library(
   pingrow ../src/classes/ping_row.cpp
 )
 add_library(
@@ -45,7 +48,7 @@ add_executable(tests.out
 )
 
 #                                      | here also hpp tested code
-target_link_libraries(tests.out PRIVATE file_reader host pingrow Catch2::Catch2WithMain)
+target_link_libraries(tests.out  PRIVATE file_reader host pingrow ip_range ip_wildcard Catch2::Catch2WithMain)
 
 
 include(CTest)

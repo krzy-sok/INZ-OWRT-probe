@@ -5,11 +5,14 @@
 #include <iomanip>
 #include <algorithm>
 
+#include <cmath>
 #include <netdb.h>
 
 #include "host_file_reader.hpp"
 #include "classes/host.hpp"
+#include <regex>
 #include "classes/helpers/ip_range.cpp"
+#include "classes/helpers/ip_wildcard.hpp"
 
 
 #define ARP_PATH       "/proc/net/arp"
@@ -100,7 +103,23 @@ bool hostFileReader::add_host_range(std::string ip, std::string mac, std::string
 
 bool hostFileReader::add_host_wildcard(std::string ip, std::string mac, std::string interface,  std::vector<std::array<std::string, 3>> &target)
 {
-    return false;
+    if(ip.find('*') == std::string::npos){
+        return false;
+    }
+    std::string regex_octet = "((25([0-5]|\\*))|(2([0-4]|\\*)([0-9]|\\*))|(1([0-9]|\\*){2})|((0|\\*)?([0-9]|\\*){1,2}))";
+    std::string regex_str = "(" + regex_octet + "\\.){3}" + regex_octet;
+    std::regex ip_wildcard_reg(regex_str);
+
+    if(!std::regex_match(ip, ip_wildcard_reg)){
+        return false;
+    }
+    ipWildcard ip_wildcard = ipWildcard(ip);
+
+    std::string res_addr = ip_wildcard.next_address();
+    while(res_addr != ""){
+        target.push_back({res_addr, mac, interface});
+    }
+    return true;
 }
 
 void hostFileReader::parse_host_line(std::stringstream &line_stream){

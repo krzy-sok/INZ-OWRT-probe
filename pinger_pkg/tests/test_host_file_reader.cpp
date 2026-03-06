@@ -6,6 +6,7 @@
 
 #define private public
 #include "../src/host_file_reader.hpp"
+#include "../src/classes/helpers/ip_wildcard.hpp"
 #undef private
 
 
@@ -274,8 +275,8 @@ TEST_CASE("parse file include second",  "[parse],[file],[include],[exclude]"){
 
 // TEST_CASE("add host wildcard", "[include],[wildcard]"){
 //     hostFileReader reader = hostFileReader("");
-//     std::stringstream host_line("10.0.0.00* N/A eth0");
-//     reader.add_host(host_line);
+//     bool res = reader.add_host_wildcard("10.0.0.*", "N/A", "eth0", reader.include_hosts);
+//     REQUIRE(res);
 
 //     REQUIRE(reader.include_hosts.size() == 10);
 
@@ -287,3 +288,145 @@ TEST_CASE("parse file include second",  "[parse],[file],[include],[exclude]"){
 //         REQUIRE(reader.include_hosts[i][2] == "eth0");
 //     }
 // }
+
+TEST_CASE("construct wildcard1"){
+    ipWildcard wildcard = ipWildcard("10.0.0.*");
+    REQUIRE(wildcard.wildcard_indexes.size()==1);
+    REQUIRE(wildcard.wildcard_indexes[0][0]==3);
+    REQUIRE(wildcard.wildcard_indexes[0][1]==2);
+    REQUIRE(wildcard.curr_octets[0] == 10);
+    REQUIRE(wildcard.curr_octets[1] == 0);
+    REQUIRE(wildcard.curr_octets[2] == 0);
+    REQUIRE(wildcard.curr_octets[3] == 0);
+}
+
+TEST_CASE("construct wildcard2"){
+    ipWildcard wildcard = ipWildcard("10.0.0.0*");
+    REQUIRE(wildcard.wildcard_indexes.size()==1);
+    REQUIRE(wildcard.wildcard_indexes[0][0]==3);
+    REQUIRE(wildcard.wildcard_indexes[0][1]==2);
+    REQUIRE(wildcard.curr_octets[0] == 10);
+    REQUIRE(wildcard.curr_octets[1] == 0);
+    REQUIRE(wildcard.curr_octets[2] == 0);
+    REQUIRE(wildcard.curr_octets[3] == 0);
+}
+
+TEST_CASE("construct wildcard3"){
+    ipWildcard wildcard = ipWildcard("10.0.0.0*0");
+    REQUIRE(wildcard.wildcard_indexes.size()==1);
+    REQUIRE(wildcard.wildcard_indexes[0][0]==3);
+    REQUIRE(wildcard.wildcard_indexes[0][1]==1);
+    REQUIRE(wildcard.curr_octets[0] == 10);
+    REQUIRE(wildcard.curr_octets[1] == 0);
+    REQUIRE(wildcard.curr_octets[2] == 0);
+    REQUIRE(wildcard.curr_octets[3] == 0);
+}
+
+TEST_CASE("construct wildcard4"){
+    ipWildcard wildcard = ipWildcard("10.0.0.*00");
+    REQUIRE(wildcard.wildcard_indexes.size()==1);
+    REQUIRE(wildcard.wildcard_indexes[0][0]==3);
+    REQUIRE(wildcard.wildcard_indexes[0][1]==0);
+    REQUIRE(wildcard.curr_octets[0] == 10);
+    REQUIRE(wildcard.curr_octets[1] == 0);
+    REQUIRE(wildcard.curr_octets[2] == 0);
+    REQUIRE(wildcard.curr_octets[3] == 0);
+}
+
+TEST_CASE("construct wildcard5"){
+    ipWildcard wildcard = ipWildcard("10.0.0.*0");
+    REQUIRE(wildcard.wildcard_indexes.size()==1);
+    REQUIRE(wildcard.wildcard_indexes[0][0]==3);
+    REQUIRE(wildcard.wildcard_indexes[0][1]==1);
+    REQUIRE(wildcard.curr_octets[0] == 10);
+    REQUIRE(wildcard.curr_octets[1] == 0);
+    REQUIRE(wildcard.curr_octets[2] == 0);
+    REQUIRE(wildcard.curr_octets[3] == 0);
+}
+
+TEST_CASE("increment wildcard2"){
+    ipWildcard wildcard = ipWildcard("10.0.0.0*");
+    REQUIRE(wildcard.wildcard_indexes.size()==1);
+    REQUIRE(wildcard.wildcard_indexes[0][0]==3);
+    REQUIRE(wildcard.wildcard_indexes[0][1]==2);
+    REQUIRE(wildcard.curr_octets[0] == 10);
+    REQUIRE(wildcard.curr_octets[1] == 0);
+    REQUIRE(wildcard.curr_octets[2] == 0);
+    REQUIRE(wildcard.curr_octets[3] == 0);
+}
+
+TEST_CASE("increment wildcard3"){
+    ipWildcard wildcard = ipWildcard("10.0.0.0*0");
+    REQUIRE(wildcard.wildcard_indexes.size()==1);
+    REQUIRE(wildcard.wildcard_indexes[0][0]==3);
+    REQUIRE(wildcard.wildcard_indexes[0][1]==1);
+    REQUIRE(wildcard.curr_octets[0] == 10);
+    REQUIRE(wildcard.curr_octets[1] == 0);
+    REQUIRE(wildcard.curr_octets[2] == 0);
+    REQUIRE(wildcard.curr_octets[3] == 0);
+}
+
+TEST_CASE("increment wildcard4"){
+    ipWildcard wildcard = ipWildcard("10.0.0.*00");
+    REQUIRE(wildcard.wildcard_indexes.size()==1);
+    REQUIRE(wildcard.wildcard_indexes[0][0]==3);
+    REQUIRE(wildcard.wildcard_indexes[0][1]==0);
+
+
+    std::string res = wildcard.next_address();
+
+    REQUIRE(wildcard.is_last_value == false);
+    REQUIRE(res == "10.0.0.0");
+    REQUIRE(wildcard.curr_octets[0] == 10);
+    REQUIRE(wildcard.curr_octets[1] == 0);
+    REQUIRE(wildcard.curr_octets[2] == 0);
+    REQUIRE(wildcard.curr_octets[3] == 100);
+}
+
+TEST_CASE("construct with wildcards on all decials"){
+    ipWildcard wildcard = ipWildcard("10.19*.1*1.*12");
+    REQUIRE(wildcard.curr_octets[0] == 10);
+    REQUIRE(wildcard.curr_octets[1] == 190);
+    REQUIRE(wildcard.curr_octets[2] == 101);
+    REQUIRE(wildcard.curr_octets[3] == 12);
+}
+
+TEST_CASE("add host wildcard too long octet", "[include],[wildcard],[illegal]"){
+    hostFileReader reader = hostFileReader("");
+    bool res = reader.add_host_wildcard("1000.0.0.00*", "N/A", "eth0", reader.include_hosts);
+
+    REQUIRE(!res);
+    REQUIRE(reader.include_hosts.size() == 0);
+}
+
+TEST_CASE("add host wildcard no wildcard", "[include],[wildcard],[illegal]"){
+    hostFileReader reader = hostFileReader("");
+    bool res = reader.add_host_wildcard("100.0.0.1", "N/A", "eth0", reader.include_hosts);
+
+    REQUIRE(!res);
+    REQUIRE(reader.include_hosts.size() == 0);
+}
+
+TEST_CASE("add host wildcard too big octet", "[include],[wildcard],[illegal]"){
+    hostFileReader reader = hostFileReader("");
+    bool res = reader.add_host_wildcard("666.0.0.1*", "N/A", "eth0", reader.include_hosts);
+
+    REQUIRE(!res);
+    REQUIRE(reader.include_hosts.size() == 0);
+}
+
+TEST_CASE("add host wildcard alphabetical chars", "[include],[wildcard],[illegal]"){
+    hostFileReader reader = hostFileReader("");
+    bool res = reader.add_host_wildcard("19a.0.0.1*", "N/A", "eth0", reader.include_hosts);
+
+    REQUIRE(!res);
+    REQUIRE(reader.include_hosts.size() == 0);
+}
+
+TEST_CASE("add host wildcard other non number", "[include],[wildcard],[illegal]"){
+    hostFileReader reader = hostFileReader("");
+    bool res = reader.add_host_wildcard("19-.0.0.1*", "N/A", "eth0", reader.include_hosts);
+
+    REQUIRE(!res);
+    REQUIRE(reader.include_hosts.size() == 0);
+}
