@@ -11,7 +11,7 @@ class ipWildcard
 {
     private:
         bool is_last_value;
-        int increment_cnt;
+        std::vector<int> increment_cnt;
         unsigned short curr_octets[4];
         std::vector<struct wildcard_position> wildcard_indexes;
 

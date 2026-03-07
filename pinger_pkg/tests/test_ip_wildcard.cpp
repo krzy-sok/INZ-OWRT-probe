@@ -204,10 +204,78 @@ TEST_CASE("increment wildcard value edge single star loop"){
     REQUIRE(cnt==10);
 }
 
-TEST_CASE("construct with wildcards on all decimals"){
-    ipWildcard wildcard = ipWildcard("10.19*.1*1.*12");
+TEST_CASE("increment wildcard value double star single octet"){
+    ipWildcard wildcard = ipWildcard("10.0.11.**");
+    REQUIRE(wildcard.wildcard_indexes.size()==2);
+
+    std::string res = wildcard.next_address();
+    REQUIRE(res == "10.0.11.0");
+    int cnt = 0;
+    while(res != ""){
+        res = wildcard.next_address();
+        cnt++;
+    }
+    REQUIRE(cnt==100);
+}
+
+TEST_CASE("increment wildcard value double star single different octet"){
+    ipWildcard wildcard = ipWildcard("10.0.*.*");
+    REQUIRE(wildcard.wildcard_indexes.size()==2);
+    REQUIRE(wildcard.wildcard_indexes[0].magnitude==1);
+
+    std::string res = wildcard.next_address();
+    REQUIRE(res == "10.0.0.0");
+    int cnt = 0;
+    while(res != ""){
+        res = wildcard.next_address();
+        // std::cout<<res<<std::endl;
+        cnt++;
+    }
+    REQUIRE(cnt==100);
+}
+
+TEST_CASE("increment wildcard value triple star single octet"){
+    ipWildcard wildcard = ipWildcard("10.0.11.***");
+    REQUIRE(wildcard.wildcard_indexes.size()==3);
+
+    std::string res = wildcard.next_address();
+    int cnt = 0;
+    while(res != ""){
+        res = wildcard.next_address();
+        cnt++;
+    }
+    REQUIRE(cnt==256);
+}
+
+
+TEST_CASE("increment 3 wildcards 3 octets"){
+    ipWildcard wildcard = ipWildcard("10.19*.1*1.2*");
     REQUIRE(wildcard.curr_octets[0] == 10);
     REQUIRE(wildcard.curr_octets[1] == 190);
     REQUIRE(wildcard.curr_octets[2] == 101);
-    REQUIRE(wildcard.curr_octets[3] == 12);
+    REQUIRE(wildcard.curr_octets[3] == 20);
+
+    std::string res = wildcard.next_address();
+    int cnt = 0;
+    while(res != ""){
+        res = wildcard.next_address();
+        cnt++;
+    }
+    REQUIRE(cnt==1000);
+}
+
+TEST_CASE("increment 3 wildcards 3 octets mag 100"){
+    ipWildcard wildcard = ipWildcard("10.*19.*11.*20");
+    REQUIRE(wildcard.curr_octets[0] == 10);
+    REQUIRE(wildcard.curr_octets[1] == 19);
+    REQUIRE(wildcard.curr_octets[2] == 11);
+    REQUIRE(wildcard.curr_octets[3] == 20);
+
+    std::string res = wildcard.next_address();
+    int cnt = 0;
+    while(res != ""){
+        res = wildcard.next_address();
+        cnt++;
+    }
+    REQUIRE(cnt==27);
 }
