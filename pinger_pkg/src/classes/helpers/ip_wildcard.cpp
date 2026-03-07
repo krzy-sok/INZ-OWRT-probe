@@ -11,9 +11,13 @@ ipWildcard::ipWildcard(std::string ip){
         getline(ip_stream, str_octet, '.');
         int wildcard_ind = str_octet.find('*');
         if(wildcard_ind != std::string::npos){
+            struct wildcard_position position;
             int padding = 3 - str_octet.size();
-            wildcard_indexes.push_back(std::array<int, 2>{i,wildcard_ind+padding});
-            // str_octet[wildcard_ind] = '0';
+            position.octet =i;
+            position.magnitude = std::pow(10, 2-(wildcard_ind+padding));
+
+            wildcard_indexes.push_back(position);
+
             str_octet.replace(wildcard_ind, 1, 1, '0');
         }
         curr_octets[i] = atoi(str_octet.data());
@@ -21,20 +25,21 @@ ipWildcard::ipWildcard(std::string ip){
 }
 
 void ipWildcard::increment_wildcard(int wildcard_index){
-    if(wildcard_index<0){
+    if(wildcard_index < 0){
         is_last_value = true;
         return;
     }
-    int octet_index = wildcard_indexes[wildcard_index][0];
-    int decimal_index = wildcard_indexes[wildcard_index][1];
+    int octet_index = wildcard_indexes[wildcard_index].octet;
+    int increment = wildcard_indexes[wildcard_index].magnitude;
 
-    int increment = pow(10, 2-decimal_index);
-    if(curr_octets[octet_index] + increment > 255){
+    if(increment_cnt == 9 ||curr_octets[octet_index] + increment > 255){
         int reset = curr_octets[octet_index] % (increment*10);
         curr_octets[octet_index] = curr_octets[octet_index] - reset;
+        increment_cnt = 0;
         increment_wildcard(wildcard_index-1);
     }
     else{
+        increment_cnt++;
         curr_octets[octet_index] += increment;
     }
 }
