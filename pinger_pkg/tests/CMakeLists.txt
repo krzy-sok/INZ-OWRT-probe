@@ -45,6 +45,7 @@ add_library(
 
 add_executable(tests.out
     test_host_file_reader.cpp
+    test_ip_wildcard.cpp
 )
 
 #                                      | here also hpp tested code
