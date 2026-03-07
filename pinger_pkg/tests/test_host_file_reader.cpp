@@ -267,21 +267,83 @@ TEST_CASE("parse file include second",  "[parse],[file],[include],[exclude]"){
     std::remove("./test-hosts");
 }
 
-// TEST_CASE("add host wildcard", "[include],[wildcard]"){
-//     hostFileReader reader = hostFileReader("");
-//     bool res = reader.add_host_wildcard("10.0.0.*", "N/A", "eth0", reader.include_hosts);
-//     REQUIRE(res);
+TEST_CASE("parse file include wildcard exclude range",  "[parse],[file],[include],[exclude]"){
+    std::ofstream testHosts("./test-hosts");
 
-//     REQUIRE(reader.include_hosts.size() == 10);
+    testHosts << "include 10.0.0.** n/a eth0" << std::endl;
+    testHosts << "exclude 10.0.0.0-10.0.0.9 n/a eth0" << std::endl;
+    testHosts.close();
 
-//     std::string partial_ip = "10.0.0.";
-//     for(int i=0; i<10; i++){
-//         REQUIRE(reader.include_hosts[i].size() == 3);
-//         REQUIRE(reader.include_hosts[i][0] == partial_ip + std::to_string(i));
-//         REQUIRE(reader.include_hosts[i][1] == "NA");
-//         REQUIRE(reader.include_hosts[i][2] == "eth0");
-//     }
-// }
+    hostFileReader reader = hostFileReader("./test-hosts");
+    std::vector<Host> hosts = reader.read_host_file();
+    REQUIRE(reader.include_hosts.size() == 100);
+    REQUIRE(reader.exclude_hosts.size() == 10);
+    REQUIRE(hosts.size() == 90);
+
+    std::string partial_ip = "10.0.0.";
+    for(int i=0; i<90; i++){
+        REQUIRE(hosts[i]._ip == partial_ip + std::to_string(i+10));
+        REQUIRE(hosts[i]._mac == "n/a");
+        REQUIRE(hosts[i]._interface == "eth0");
+    }
+
+    std::remove("./test-hosts");
+}
+
+
+TEST_CASE("parse file include wildcard exclude single",  "[parse],[file],[include],[exclude]"){
+    std::ofstream testHosts("./test-hosts");
+
+    testHosts << "include 10.0.0.** n/a eth0" << std::endl;
+    testHosts << "exclude 10.0.0.10 n/a eth0" << std::endl;
+    testHosts.close();
+
+    hostFileReader reader = hostFileReader("./test-hosts");
+    std::vector<Host> hosts = reader.read_host_file();
+    REQUIRE(reader.include_hosts.size() == 100);
+    REQUIRE(reader.exclude_hosts.size() == 1);
+    REQUIRE(hosts.size() == 99);
+
+    REQUIRE(hosts[10]._ip != "10.0.0.10");
+
+    std::remove("./test-hosts");
+}
+
+TEST_CASE("parse file include range exclude wildcard",  "[parse],[file],[include],[exclude]"){
+    std::ofstream testHosts("./test-hosts");
+
+    testHosts << "include 10.0.0.1-10.0.0.90 n/a eth0" << std::endl;
+    testHosts << "exclude 10.0.0.*0 n/a eth0" << std::endl;
+    testHosts.close();
+
+    hostFileReader reader = hostFileReader("./test-hosts");
+    std::vector<Host> hosts = reader.read_host_file();
+    REQUIRE(reader.include_hosts.size() == 90);
+    REQUIRE(reader.exclude_hosts.size() == 10);
+    REQUIRE(reader.exclude_hosts[0].ip == "10.0.0.0");
+    for(int i = 1; i<9; i++){
+        REQUIRE(reader.include_hosts[(i*10)-1].ip == "10.0.0."+std::to_string(i*10));
+        REQUIRE(reader.exclude_hosts[i].ip == "10.0.0."+std::to_string(i*10));
+    }
+    REQUIRE(hosts.size() == 81);
+
+    std::remove("./test-hosts");
+}
+
+TEST_CASE("add host wildcard", "[include],[wildcard]"){
+    hostFileReader reader = hostFileReader("");
+    bool res = reader.add_host_wildcard("10.0.0.*", "N/A", "eth0", reader.include_hosts);
+    REQUIRE(res);
+
+    REQUIRE(reader.include_hosts.size() == 10);
+
+    std::string partial_ip = "10.0.0.";
+    for(int i=0; i<10; i++){
+        REQUIRE(reader.include_hosts[i].ip == partial_ip + std::to_string(i));
+        REQUIRE(reader.include_hosts[i].mac == "N/A");
+        REQUIRE(reader.include_hosts[i].interface == "eth0");
+    }
+}
 
 TEST_CASE("add host wildcard too long octet", "[include],[wildcard],[illegal]"){
     hostFileReader reader = hostFileReader("");
