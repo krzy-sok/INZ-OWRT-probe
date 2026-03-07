@@ -204,7 +204,7 @@ TEST_CASE("increment wildcard value edge single star loop"){
     REQUIRE(cnt==10);
 }
 
-TEST_CASE("construct with wildcards on all decials"){
+TEST_CASE("construct with wildcards on all decimals"){
     ipWildcard wildcard = ipWildcard("10.19*.1*1.*12");
     REQUIRE(wildcard.curr_octets[0] == 10);
     REQUIRE(wildcard.curr_octets[1] == 190);

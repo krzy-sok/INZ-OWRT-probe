@@ -12,7 +12,7 @@
 #include "classes/host.hpp"
 #include <regex>
 #include "classes/helpers/ip_range.cpp"
-#include "classes/helpers/ip_wildcard.hpp"
+#include "classes/helpers/ip_wildcard.cpp"
 
 
 #define ARP_PATH       "/proc/net/arp"
@@ -60,7 +60,7 @@ hostFileReader::hostFileReader(std::string filepath){
     _filepath = filepath;
 }
 
-void hostFileReader::add_host(std::stringstream &line_stream,  std::vector<std::array<std::string, 3>> &target)
+void hostFileReader::add_host(std::stringstream &line_stream,  std::vector<host_intermidiate> &target)
 {
     std::string ip;
     std::string mac;
@@ -73,7 +73,7 @@ void hostFileReader::add_host(std::stringstream &line_stream,  std::vector<std::
     return;
 }
 
-bool hostFileReader::add_single_host(std::string ip, std::string mac, std::string interface,  std::vector<std::array<std::string, 3>> &target){
+bool hostFileReader::add_single_host(std::string ip, std::string mac, std::string interface,  std::vector<host_intermidiate> &target){
     in_addr addr;
     if(inet_aton(ip.data(), &addr) == 0){
         return false;
@@ -84,7 +84,7 @@ bool hostFileReader::add_single_host(std::string ip, std::string mac, std::strin
     return true;
 }
 
-bool hostFileReader::add_host_range(std::string ip, std::string mac, std::string interface,  std::vector<std::array<std::string, 3>> &target)
+bool hostFileReader::add_host_range(std::string ip, std::string mac, std::string interface,  std::vector<host_intermidiate> &target)
 {
     std::optional<ipRange> range_res = try_parse_ip_range(ip);
     if(!range_res.has_value()){
@@ -94,14 +94,13 @@ bool hostFileReader::add_host_range(std::string ip, std::string mac, std::string
 
     std::string curr_addr = range.next_address();
     while(curr_addr !=""){
-        // include_hosts.push_back(new Host(curr_addr, mac, interface));
-        target.push_back(std::array<std::string, 3>{{curr_addr, mac, interface}});
+        target.push_back({curr_addr, mac, interface});
         curr_addr = range.next_address();
     }
     return true;
 }
 
-bool hostFileReader::add_host_wildcard(std::string ip, std::string mac, std::string interface,  std::vector<std::array<std::string, 3>> &target)
+bool hostFileReader::add_host_wildcard(std::string ip, std::string mac, std::string interface,  std::vector<host_intermidiate> &target)
 {
     if(ip.find('*') == std::string::npos){
         return false;
@@ -118,6 +117,7 @@ bool hostFileReader::add_host_wildcard(std::string ip, std::string mac, std::str
     std::string res_addr = ip_wildcard.next_address();
     while(res_addr != ""){
         target.push_back({res_addr, mac, interface});
+        res_addr = ip_wildcard.next_address();
     }
     return true;
 }
@@ -161,14 +161,14 @@ std::vector<Host> hostFileReader::read_host_file(){
         // (this->*parser_func)(line_stream);
     }
 
-    std::vector<std::array<std::string, 3>> diff;
+    std::vector<host_intermidiate> diff;
 
     std::set_difference(include_hosts.begin(), include_hosts.end(),
         exclude_hosts.begin(), exclude_hosts.end(),
         std::inserter(diff, diff.begin()));
 
-    for(std::array<std::string,3> entry : diff){
-        hosts.push_back(Host(entry[0], entry[1], entry[2]));
+    for(host_intermidiate entry : diff){
+        hosts.push_back(Host(entry.ip, entry.mac, entry.interface));
     }
     return hosts;
 }

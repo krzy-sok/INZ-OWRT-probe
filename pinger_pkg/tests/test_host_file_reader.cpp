@@ -25,10 +25,9 @@ TEST_CASE("add single host", "[include],[single]"){
 
     REQUIRE(res);
     REQUIRE(reader.include_hosts.size() == 1);
-    REQUIRE(reader.include_hosts[0].size() == 3);
-    REQUIRE(reader.include_hosts[0][0] == parsed_line[0]);
-    REQUIRE(reader.include_hosts[0][1] == parsed_line[1]);
-    REQUIRE(reader.include_hosts[0][2] == parsed_line[2]);
+    REQUIRE(reader.include_hosts[0].ip == parsed_line[0]);
+    REQUIRE(reader.include_hosts[0].mac == parsed_line[1]);
+    REQUIRE(reader.include_hosts[0].interface == parsed_line[2]);
 }
 
 TEST_CASE("add single host with range", "[include],[single],[negative]"){
@@ -65,10 +64,9 @@ TEST_CASE("add host range", "[include],[range]"){
 
     std::string partial_ip = "10.0.0.";
     for(int i=0; i<10; i++){
-        REQUIRE(reader.include_hosts[i].size() == 3);
-        REQUIRE(reader.include_hosts[i][0] == partial_ip + std::to_string(i+1));
-        REQUIRE(reader.include_hosts[i][1] == "N/A");
-        REQUIRE(reader.include_hosts[i][2] == "eth0");
+        REQUIRE(reader.include_hosts[i].ip == partial_ip + std::to_string(i+1));
+        REQUIRE(reader.include_hosts[i].mac == "N/A");
+        REQUIRE(reader.include_hosts[i].interface == "eth0");
     }
 }
 
@@ -145,10 +143,9 @@ TEST_CASE("parse line single host", "[parse],[single],[line]"){
     reader.parse_host_line(line);
 
     REQUIRE(reader.include_hosts.size() == 1);
-    REQUIRE(reader.include_hosts[0].size() == 3);
-    REQUIRE(reader.include_hosts[0][0] == parsed_line[0]);
-    REQUIRE(reader.include_hosts[0][1] == parsed_line[1]);
-    REQUIRE(reader.include_hosts[0][2] == parsed_line[2]);
+    REQUIRE(reader.include_hosts[0].ip == parsed_line[0]);
+    REQUIRE(reader.include_hosts[0].mac == parsed_line[1]);
+    REQUIRE(reader.include_hosts[0].interface == parsed_line[2]);
 }
 
 TEST_CASE("parse line single host exclude", "[parse],[single],[line],[exclude]"){
@@ -158,10 +155,9 @@ TEST_CASE("parse line single host exclude", "[parse],[single],[line],[exclude]")
     reader.parse_host_line(line);
 
     REQUIRE(reader.exclude_hosts.size() == 1);
-    REQUIRE(reader.exclude_hosts[0].size() == 3);
-    REQUIRE(reader.exclude_hosts[0][0] == parsed_line[0]);
-    REQUIRE(reader.exclude_hosts[0][1] == parsed_line[1]);
-    REQUIRE(reader.exclude_hosts[0][2] == parsed_line[2]);
+    REQUIRE(reader.exclude_hosts[0].ip == parsed_line[0]);
+    REQUIRE(reader.exclude_hosts[0].mac == parsed_line[1]);
+    REQUIRE(reader.exclude_hosts[0].interface == parsed_line[2]);
 }
 
 TEST_CASE("parse line range", "[parse],[single],[line]"){
@@ -173,10 +169,9 @@ TEST_CASE("parse line range", "[parse],[single],[line]"){
 
     std::string partial_ip = "10.0.0.";
     for(int i=0; i<10; i++){
-        REQUIRE(reader.include_hosts[i].size() == 3);
-        REQUIRE(reader.include_hosts[i][0] == partial_ip + std::to_string(i+1));
-        REQUIRE(reader.include_hosts[i][1] == "N/A");
-        REQUIRE(reader.include_hosts[i][2] == "eth0");
+        REQUIRE(reader.include_hosts[i].ip == partial_ip + std::to_string(i+1));
+        REQUIRE(reader.include_hosts[i].mac == "N/A");
+        REQUIRE(reader.include_hosts[i].interface == "eth0");
     }
 }
 
@@ -190,10 +185,9 @@ TEST_CASE("parse line range exclude", "[parse],[single],[line],[exclude]"){
 
     std::string partial_ip = "10.0.0.";
     for(int i=0; i<10; i++){
-        REQUIRE(reader.exclude_hosts[i].size() == 3);
-        REQUIRE(reader.exclude_hosts[i][0] == partial_ip + std::to_string(i+1));
-        REQUIRE(reader.exclude_hosts[i][1] == "N/A");
-        REQUIRE(reader.exclude_hosts[i][2] == "eth0");
+        REQUIRE(reader.exclude_hosts[i].ip == partial_ip + std::to_string(i+1));
+        REQUIRE(reader.exclude_hosts[i].mac == "N/A");
+        REQUIRE(reader.exclude_hosts[i].interface == "eth0");
     }
 }
 
