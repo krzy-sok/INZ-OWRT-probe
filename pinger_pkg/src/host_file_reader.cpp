@@ -162,10 +162,12 @@ std::vector<Host> hostFileReader::read_host_file(){
     }
 
     std::vector<host_intermidiate> diff;
+    std::sort(include_hosts.begin(), include_hosts.end());
+    std::sort(exclude_hosts.begin(), exclude_hosts.end());
 
     std::set_difference(include_hosts.begin(), include_hosts.end(),
         exclude_hosts.begin(), exclude_hosts.end(),
-        std::inserter(diff, diff.begin()));
+        std::back_inserter(diff));
 
     for(host_intermidiate entry : diff){
         hosts.push_back(Host(entry.ip, entry.mac, entry.interface));

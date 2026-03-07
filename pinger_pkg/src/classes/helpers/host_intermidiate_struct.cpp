@@ -1,4 +1,5 @@
 #include <string>
+#include <arpa/inet.h>
 
 struct host_intermidiate{
     std::string ip;
@@ -8,7 +9,10 @@ struct host_intermidiate{
         return ip==other.ip;
     }
     bool operator<(const host_intermidiate &other) const {
-        return ip<other.ip;
+        in_addr ours, theirs;
+        inet_aton(ip.data(), &ours);
+        inet_aton(other.ip.data(), &theirs);
+        return htonl(ours.s_addr)<htonl(theirs.s_addr);
     }
     host_intermidiate& operator=(const host_intermidiate& other){
         ip=other.ip;

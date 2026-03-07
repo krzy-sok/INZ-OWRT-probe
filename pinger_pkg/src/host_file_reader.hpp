@@ -2,7 +2,6 @@
 #define HOSTFILEREADER
 
 #include <vector>
-#include <array>
 
 #include "classes/host.hpp"
 #include "classes/helpers/ip_range.hpp"
