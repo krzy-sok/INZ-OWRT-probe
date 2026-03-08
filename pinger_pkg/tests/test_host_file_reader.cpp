@@ -384,3 +384,39 @@ TEST_CASE("add host wildcard other non number", "[include],[wildcard],[illegal]"
     REQUIRE(!res);
     REQUIRE(reader.include_hosts.size() == 0);
 }
+
+
+TEST_CASE("read hosts from arp",  "[parse],[file],[include],[exclude]"){
+    std::ofstream testHosts("./test-arp");
+
+    // open wrt arp format
+    // IP address       HW type     Flags       HW address            Mask     Device
+    testHosts << "Address  HWtype Flags HWaddress           Mask  Device"<<std::endl;
+    testHosts << "10.0.0.10 n/a   n/a   12:34:56:78:90:ab   n/a   eth0" << std::endl;
+    testHosts << "10.0.0.11 n/a   n/a   12:34:56:78:90:cd   n/a   eth0" << std::endl;
+    testHosts << "10.0.0.12 n/a   n/a   12:34:56:78:90:ef   n/a   eth0" << std::endl;
+    testHosts.close();
+
+    hostFileReader reader = hostFileReader("./test-arp");
+    reader.ARP_PATH = "./test-arp";
+    std::vector<Host> hosts = reader.read_host_file();
+
+    //arp mode skips intermediate vectors - no way to exclude hosts
+    REQUIRE(reader.include_hosts.size() == 0);
+    REQUIRE(reader.exclude_hosts.size() == 0);
+    REQUIRE(hosts.size() == 3);
+    REQUIRE(hosts[0]._ip == "10.0.0.10");
+    REQUIRE(hosts[0]._mac == "12:34:56:78:90:ab");
+    REQUIRE(hosts[0]._interface == "eth0");
+
+    REQUIRE(hosts[1]._ip == "10.0.0.11");
+    REQUIRE(hosts[1]._mac == "12:34:56:78:90:cd");
+    REQUIRE(hosts[1]._interface == "eth0");
+
+    REQUIRE(hosts[2]._ip == "10.0.0.12");
+    REQUIRE(hosts[2]._mac == "12:34:56:78:90:ef");
+    REQUIRE(hosts[2]._interface == "eth0");
+
+
+    std::remove("./test-arp");
+}

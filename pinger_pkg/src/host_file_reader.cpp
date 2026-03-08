@@ -15,7 +15,7 @@
 #include "classes/helpers/ip_wildcard.hpp"
 
 
-#define ARP_PATH       "/proc/net/arp"
+
 
 void hostFileReader::parse_arp_line(std::stringstream &line_stream){
     // arp format:
@@ -30,7 +30,9 @@ void hostFileReader::parse_arp_line(std::stringstream &line_stream){
     line_stream >> mac;
     line_stream >> _;
     line_stream >> interface;
+    std::cout<<"arp host:"<<ip<<" "<<mac<<" "<<interface<<std::endl;
     hosts.push_back(Host(ip, mac, interface));
+    std::cout<<"hosts:"<<hosts.size()<<std::endl;
 }
 
 std::optional<ipRange> hostFileReader::try_parse_ip_range(std::string range){
@@ -54,10 +56,6 @@ std::optional<ipRange> hostFileReader::try_parse_ip_range(std::string range){
 
     ipRange rangeObj = ipRange(start.s_addr, end.s_addr);
     return rangeObj;
-}
-
-hostFileReader::hostFileReader(std::string filepath){
-    _filepath = filepath;
 }
 
 void hostFileReader::add_host(std::stringstream &line_stream,  std::vector<host_intermidiate> &target)
@@ -136,14 +134,13 @@ void hostFileReader::parse_host_line(std::stringstream &line_stream){
 
 
 std::vector<Host> hostFileReader::read_host_file(){
-    std::vector<Host> hosts = {};
     std::ifstream arp_cache(_filepath);
     std::string line;
 
     // std::function<void(std::stringstream&)> parser_func;
     // parser_func =
     void (hostFileReader::*parser_func)(std::stringstream&) = nullptr;
-    parser_func = &hostFileReader::parse_host_line;
+    parser_func = &hostFileReader::parse_host_line;;
     if(_filepath == ARP_PATH){
         // skip file header
         if(!std::getline(arp_cache, line))
@@ -159,6 +156,7 @@ std::vector<Host> hostFileReader::read_host_file(){
         std::stringstream line_stream(line);
         // parse_host_line(line_stream);
         (this->*parser_func)(line_stream);
+        std::cout<<"hosts:"<<hosts.size()<<std::endl;
     }
 
     std::vector<host_intermidiate> diff;
@@ -169,8 +167,14 @@ std::vector<Host> hostFileReader::read_host_file(){
         exclude_hosts.begin(), exclude_hosts.end(),
         std::back_inserter(diff));
 
+
     for(host_intermidiate entry : diff){
         hosts.push_back(Host(entry.ip, entry.mac, entry.interface));
     }
     return hosts;
+}
+
+hostFileReader::hostFileReader(std::string filepath){
+    _filepath = filepath;
+    ARP_PATH = "/proc/net/arp";
 }

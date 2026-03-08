@@ -14,6 +14,7 @@ class hostFileReader
         std::vector<host_intermidiate> include_hosts;
         std::vector<host_intermidiate> exclude_hosts;
         std::vector<Host> hosts;
+        std::string ARP_PATH;
 
         void parse_arp_line(std::stringstream &line_stream);
         void parse_host_line(std::stringstream &line_stream);
