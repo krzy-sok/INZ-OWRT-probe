@@ -14,10 +14,4 @@ struct host_intermidiate{
         inet_aton(other.ip.data(), &theirs);
         return htonl(ours.s_addr)<htonl(theirs.s_addr);
     }
-    host_intermidiate& operator=(const host_intermidiate& other){
-        ip=other.ip;
-        mac=other.mac;
-        interface=other.interface;
-        return *this;
-    }
 };

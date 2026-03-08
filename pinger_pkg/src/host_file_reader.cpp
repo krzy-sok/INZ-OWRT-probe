@@ -40,7 +40,7 @@ std::optional<ipRange> hostFileReader::try_parse_ip_range(std::string range){
     getline(ss, first, '-');
     getline(ss, last, '-');
 
-    if(first==""|last==""){
+    if(first==""||last==""){
         return {};
     }
 
@@ -157,8 +157,8 @@ std::vector<Host> hostFileReader::read_host_file(){
     while(std::getline(arp_cache, line))
     {
         std::stringstream line_stream(line);
-        parse_host_line(line_stream);
-        // (this->*parser_func)(line_stream);
+        // parse_host_line(line_stream);
+        (this->*parser_func)(line_stream);
     }
 
     std::vector<host_intermidiate> diff;
@@ -174,57 +174,3 @@ std::vector<Host> hostFileReader::read_host_file(){
     }
     return hosts;
 }
-
-
-
-// void parse_arp_table(std::stringstream &line_stream, std::vector<Host> &hosts, std::vector<std::string> exclude){
-//     // arp format:
-//     // IP address  HW type  Flags  HW address  Mask  Device
-//     std::string ip;
-//     std::string mac;
-//     std::string interface;
-//     std::string _;
-//     line_stream >> ip;
-//     line_stream >> _;
-//     line_stream >> _;
-//     line_stream >> mac;
-//     line_stream >> _;
-//     line_stream >> interface;
-//     hosts.push_back(Host(ip, mac, interface));
-// }
-
-// // custom host file should not have to include all data from arp-table as haf of it is unused
-// void parse_host_file(std::stringstream &line_stream, std::vector<Host> &hosts, std::vector<std::string> exclude){
-//     std::string ip;
-//     std::string mac;
-//     std::string interface;
-//     line_stream >> ip;
-//     line_stream >> mac;
-//     line_stream >> interface;
-//     hosts.push_back(Host(ip, mac, interface));
-// }
-
-// std::vector<Host> read_host_file(std::string file_path){
-//     std::vector<Host> hosts = {};
-//     std::ifstream arp_cache(file_path);
-//     std::string line;
-
-
-//     std::function parser_func = parse_host_file;
-//     if(file_path == ARP_PATH){
-//         // skip file header
-//         if(!std::getline(arp_cache, line))
-//         {
-//             std::cerr<<"Failed to read arp cache!\n";
-//             throw std::runtime_error("filed to read arp cache");
-//         }
-//         parser_func = parse_arp_table;
-//     }
-
-//     while(std::getline(arp_cache, line))
-//     {
-//         std::stringstream line_stream(line);
-//         parser_func(line_stream, hosts, );
-//     }
-//     return hosts;
-// }

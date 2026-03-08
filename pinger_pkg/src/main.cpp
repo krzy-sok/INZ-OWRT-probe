@@ -99,8 +99,8 @@ std::string generate_mac_address() {
     // exclude multicast and reserved
     int unicast_bitmask = 0b11111010;
     // exclude globally unique addresses
-    int locally_unique_bitmask = 0b00000010;
-    int first_octet = dist(rng) & unicast_bitmask | locally_unique_bitmask;
+    // int locally_unique_bitmask = 0b00000010;
+    int first_octet = dist(rng) & unicast_bitmask;
     str_stream <<  std::setw(2) << std::setfill('0') << std::hex << first_octet;
     for(int i = 1; i<6; i++){
         str_stream <<":" <<  std::setw(2) << std::setfill('0') << std::hex << dist(rng);

@@ -9,7 +9,7 @@ ipWildcard::ipWildcard(std::string ip){
     is_last_value = false;
     for(int i =0; i < 4; i++){
         getline(ip_stream, str_octet, '.');
-        int wildcard_ind = str_octet.find('*');
+        unsigned long int wildcard_ind = str_octet.find('*');
         while(wildcard_ind != std::string::npos){
             struct wildcard_position position;
             int padding = 3 - str_octet.size();
