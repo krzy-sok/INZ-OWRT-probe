@@ -15,6 +15,7 @@
 
 #include "classes/host.hpp"
 #include "classes/ping_row.hpp"
+#include "host_file_reader.hpp"
 
 #define ARP_PATH       "/proc/net/arp"
 // #define DEFAULT_NPING_PARAMS "-udp --rate 1000 -c 2000 --dest-mac "
@@ -164,7 +165,10 @@ int main(int argc, char* argv[])
     std::clog<<"created socket\n"<<std::endl;
     set_socket_options(sock);
 
-    std::vector<Host> hosts = read_host_file(file_path);
+    // std::vector<Host> hosts = read_host_file(file_path);
+    hostFileReader reader = hostFileReader(file_path);
+    std::vector<Host> hosts = reader.read_host_file();
+
 
     int delay = 1000;
 

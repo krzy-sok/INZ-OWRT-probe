@@ -18,6 +18,7 @@ class hostFileReader
         void parse_arp_line(std::stringstream &line_stream);
         void parse_host_line(std::stringstream &line_stream);
         bool parseIp(std::string ip, int target[]);
+        std::optional<ipRange> try_parse_ip_range(std::string range);
 
         //
         void add_host(std::stringstream &line_stream,  std::vector<host_intermidiate> &target);
@@ -29,7 +30,7 @@ class hostFileReader
     public:
         hostFileReader(std::string filePath);
         std::vector<Host> read_host_file();
-        std::optional<ipRange> try_parse_ip_range(std::string range);
+
 };
 
 #endif

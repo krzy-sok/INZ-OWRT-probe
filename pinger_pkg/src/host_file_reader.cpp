@@ -11,8 +11,8 @@
 #include "host_file_reader.hpp"
 #include "classes/host.hpp"
 #include <regex>
-#include "classes/helpers/ip_range.cpp"
-#include "classes/helpers/ip_wildcard.cpp"
+#include "classes/helpers/ip_range.hpp"
+#include "classes/helpers/ip_wildcard.hpp"
 
 
 #define ARP_PATH       "/proc/net/arp"
