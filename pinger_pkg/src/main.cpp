@@ -185,7 +185,6 @@ int main(int argc, char* argv[])
 
     for(unsigned int i =0; i<hosts.size(); i++){
         if(is_flood){
-            // std::cout<<"-----------------\n"<< "flood: " << is_flood<<std::endl;
             hosts[i].startFlood(nping_param.str());
         }
 

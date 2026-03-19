@@ -30,9 +30,7 @@ void hostFileReader::parse_arp_line(std::stringstream &line_stream){
     line_stream >> mac;
     line_stream >> _;
     line_stream >> interface;
-    std::cout<<"arp host:"<<ip<<" "<<mac<<" "<<interface<<std::endl;
     hosts.push_back(Host(ip, mac, interface));
-    std::cout<<"hosts:"<<hosts.size()<<std::endl;
 }
 
 std::optional<ipRange> hostFileReader::try_parse_ip_range(std::string range){
@@ -156,7 +154,6 @@ std::vector<Host> hostFileReader::read_host_file(){
         std::stringstream line_stream(line);
         // parse_host_line(line_stream);
         (this->*parser_func)(line_stream);
-        std::cout<<"hosts:"<<hosts.size()<<std::endl;
     }
 
     std::vector<host_intermidiate> diff;
