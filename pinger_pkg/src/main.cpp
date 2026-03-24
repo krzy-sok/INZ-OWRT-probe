@@ -179,9 +179,10 @@ int main(int argc, char* argv[])
     else{
         nping_param << NPING_MODE
             << " --rate "<< NPING_RATE
-            << " -c " << NPING_RATE * std::ceil(delay * ping_count /1000.0)
-            << " --dest-mac " << generate_mac_address();
+            << " -c " << NPING_RATE * std::ceil(delay * ping_count /1000.0);
+
     }
+    nping_param << " --dest-mac " << generate_mac_address();
 
     for(unsigned int i =0; i<hosts.size(); i++){
         if(is_flood){
