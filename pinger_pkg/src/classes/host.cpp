@@ -8,6 +8,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <string.h>
+#include <cstring>
 
 #include "host.hpp"
 #include "../ping_helpers.hpp"
@@ -32,7 +33,7 @@ void Host::ping(int sock)
     struct timespec t_sent, t_recived;
     struct sockaddr_in src;
 
-    unsigned char packet_buffer[PING_PKT_S];
+    unsigned char packet_buffer[PING_PKT_S] = {0};
     struct icmp_pkt *packet = (struct icmp_pkt *) packet_buffer;
 
     // compose packet
