@@ -9,6 +9,7 @@
 #include <signal.h>
 #include <string.h>
 #include <cstring>
+#include <curl/curl.h>
 
 #include "host.hpp"
 #include "../ping_helpers.hpp"
@@ -101,6 +102,70 @@ void Host::ping(int sock)
 
     PingRow ping_res = PingRow(rtt, std::time(nullptr));
     ping_results.push_back(ping_res);
+}
+
+static size_t write_cb(char *ptr, size_t size, size_t nmemb, void *stream)
+{
+  size_t written = fwrite(ptr, size, nmemb, (FILE *)stream);
+  return written;
+}
+
+void Host::curl(std::string path, int port, long timeout){
+    static const char *pagefilename = "/tmp/openwisp/curl-res";
+    struct timespec t_sent, t_recived;
+    CURLcode result;
+    CURL *curl;
+
+    result = curl_global_init(CURL_GLOBAL_ALL);
+    if(result != CURLE_OK) {
+        fprintf(stderr, "Could not init curl\n");
+        return;
+    }
+
+    /* init the curl session */
+    curl = curl_easy_init();
+    if(curl) {
+        FILE *pagefile;
+
+        /* set URL to get here */
+        std::stringstream curl_url;
+        curl_url << _ip << ":" << port << path;
+        curl_easy_setopt(curl, CURLOPT_URL, curl_url.str().data());
+
+        // /* Switch on full protocol/debug output while testing */
+        curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout);
+
+        // // /* disable progress meter, set to 0L to enable it */
+        curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1L);
+
+        // /* send all data to this function */
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_cb);
+
+        double rtt = -1.0;
+        /* open the file */
+        pagefile = fopen(pagefilename, "wb");
+        if(pagefile) {
+            /* write the page body to this file handle */
+            clock_gettime(0, &t_sent);
+            curl_easy_setopt(curl, CURLOPT_WRITEDATA, pagefile);
+
+            /* get it! */
+            result = curl_easy_perform(curl);
+            /* close the header file */
+            fclose(pagefile);
+            clock_gettime(0, &t_recived);
+            rtt = ((double)(t_recived.tv_nsec - t_sent.tv_nsec))/1000000;
+        }
+        /* cleanup curl stuff */
+        curl_easy_cleanup(curl);
+        PingRow ping_res = PingRow(rtt, std::time(nullptr));
+        ping_results.push_back(ping_res);
+    }
+    curl_global_cleanup();
+    if(!result){
+        std::clog<<"cannot get document"<< path << "from hosts" << _ip;
+    }
 }
 
 std::vector<std::string> Host::split_args(std::string nping_args){

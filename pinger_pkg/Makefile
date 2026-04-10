@@ -20,7 +20,7 @@ define Package/pinger_pkg
 	SECTION:=examples
 	CATEGORY:=Examples
 	TITLE:=C++ OOp Pinging demo
-	DEPENDS:=+libstdcpp
+	DEPENDS:=+libstdcpp +libcurl
 endef
 
 # Package description; a more verbose description on what our package does
@@ -41,7 +41,7 @@ endef
 # 		$(TARGET_GCC) $(TARGET_CFLAGS) -o $(PKG_BUILD_DIR)/pinger_pkg.o -c $(PKG_BUILD_DIR)/arp-pinger.c
 # 		$(TARGET_GCC) $(TARGET_LDFLAGS) -o $(PKG_BUILD_DIR)/$1 $(PKG_BUILD_DIR)/pinger_pkg.o
 define Build/Compile
-		$(TARGET_CXX) $(TARGET_CXXFLAGS) $(FILES) -o $(PKG_BUILD_DIR)/pinger_pkg $(TARGET_LIBS) -std=c++20
+		$(TARGET_CXX) $(TARGET_CXXFLAGS) $(FILES) -o $(PKG_BUILD_DIR)/pinger_pkg $(TARGET_LIBS) -lcurl -std=c++20
 endef
 
 # Package install instructions; create a directory inside the package to hold our executable, and then copy the executable we built previously into the folder

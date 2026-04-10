@@ -16,6 +16,7 @@
 #include "classes/host.hpp"
 #include "classes/ping_row.hpp"
 #include "host_file_reader.hpp"
+#include <cstring>
 
 #define ARP_PATH       "/proc/net/arp"
 // #define DEFAULT_NPING_PARAMS "-udp --rate 1000 -c 2000 --dest-mac "
@@ -36,59 +37,6 @@ std::string combine_json(std::vector<Host> hosts){
     }
     string_stream << "]";
     return string_stream.str();
-}
-
-void parse_arp_table(std::stringstream &line_stream, std::vector<Host> &hosts){
-    // arp format:
-    // IP address  HW type  Flags  HW address  Mask  Device
-    std::string ip;
-    std::string mac;
-    std::string interface;
-    std::string _;
-    line_stream >> ip;
-    line_stream >> _;
-    line_stream >> _;
-    line_stream >> mac;
-    line_stream >> _;
-    line_stream >> interface;
-    hosts.push_back(Host(ip, mac, interface));
-}
-
-// custom host file should not have to include all data from arp-table as haf of it is unused
-void parse_host_file(std::stringstream &line_stream, std::vector<Host> &hosts){
-    std::string ip;
-    std::string mac;
-    std::string interface;
-    line_stream >> ip;
-    line_stream >> mac;
-    line_stream >> interface;
-    hosts.push_back(Host(ip, mac, interface));
-}
-
-std::vector<Host> read_host_file(std::string file_path)
-{
-    std::vector<Host> hosts = {};
-    std::ifstream arp_cache(file_path);
-    std::string line;
-
-
-    std::function parser_func = parse_host_file;
-    if(file_path == ARP_PATH){
-        // skip file header
-        if(!std::getline(arp_cache, line))
-        {
-            std::cerr<<"Failed to read arp cache!\n";
-            throw std::runtime_error("filed to read arp cache");
-        }
-        parser_func = parse_arp_table;
-    }
-
-    while(std::getline(arp_cache, line))
-    {
-        std::stringstream line_stream(line);
-        parser_func(line_stream, hosts);
-    }
-    return hosts;
 }
 
 std::string generate_mac_address() {
@@ -130,11 +78,14 @@ void set_socket_options(int sock){
     // flood flag,
     // input file in arp-table format? or ip, mac, interface,
     // number of pings to each host,
+    // int curl_flag
     // nping options (as 1 string?) - default set in monitoring-scripts
+    // string path to file that should be gotten with curl
+    // int curl port
 int main(int argc, char* argv[])
 {
-    if(argc< 4 || argc > 5){
-        std::clog<< "Incorrect argument count! Required arguments:"<<std::endl<<"flood flag: 0/1 \n path to file with target hosts \n number of pings to each host \n optional nping options"<<std::endl;
+    if(argc< 4 || argc > 8){
+        std::clog<< "Incorrect argument count! Required arguments:"<<std::endl<<"flood flag: 0/1 \n path to file with target hosts \n number of pings to each host \n curlflag \n optional nping options \n curl path \ncurl port"<<std::endl;
         return -1;
     }
     std::string flood_flag = std::string(argv[1]);
@@ -152,11 +103,28 @@ int main(int argc, char* argv[])
         return -1;
     }
 
+    std::string curl_flag = std::string(argv[4]);
+    bool is_curl = curl_flag == "1";
+    std::clog<<is_curl;
+
     std::string nping_opts = "";
-    if(argc == 5){
-        nping_opts = std::string(argv[4]);
+    if(argc >= 6 && strlen(argv[5]) != 0){
+        nping_opts = std::string(argv[5]);
     }
 
+    if(is_curl && argc<8){
+        std::clog<<"to use curl you need to set path and port as 6 and 7 argument" <<std::endl;
+        std::clog<<"reverting to ECHO ICMP method" <<std::endl;
+        is_curl = false;
+    }
+
+    int curl_port;
+    std::string curl_path;
+    if(is_curl){
+        std::clog<<"setting curl opts"<<std::endl;
+        curl_path = std::string(argv[6]);
+        curl_port = atoi(argv[7]);
+    }
     int sock = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
     if(sock < 0){
         std::cerr << "Error crating socket\n"<<std::endl;
@@ -191,8 +159,12 @@ int main(int argc, char* argv[])
         std::chrono::milliseconds timespan(delay);
         for (int c=0; c<ping_count; c++){
             std::this_thread::sleep_for(timespan);
-            hosts[i].ping(sock);
-
+            if(is_curl){
+                hosts[i].curl(curl_path, curl_port, TIMEOUT_SEC);
+            }
+            else{
+                hosts[i].ping(sock);
+            }
         }
         if(is_flood){
             hosts[i].stopFlood();

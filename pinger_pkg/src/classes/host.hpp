@@ -18,9 +18,11 @@ class Host
         std::vector<PingRow> ping_results;
         std::vector<std::string> split_args(std::string nping_args);
 
+
     public:
         Host(std::string ip, std::string mac, std::string interface);
         void ping(int sock);
+        void curl(std::string path, int port, long timeout);
         int startFlood(std::string nping_args);
         void stopFlood();
         std::string to_json();
