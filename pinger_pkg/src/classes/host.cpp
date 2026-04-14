@@ -130,6 +130,7 @@ void Host::curl(std::string path, int port, long timeout){
         /* set URL to get here */
         std::stringstream curl_url;
         curl_url << _ip << ":" << port << path;
+        std::clog<<"curl url: "<< curl_url.str() <<std::endl;
         curl_easy_setopt(curl, CURLOPT_URL, curl_url.str().data());
 
         // /* Switch on full protocol/debug output while testing */
@@ -142,7 +143,7 @@ void Host::curl(std::string path, int port, long timeout){
         // /* send all data to this function */
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_cb);
 
-        double rtt = -1.0;
+
         /* open the file */
         pagefile = fopen(pagefilename, "wb");
         if(pagefile) {
@@ -155,17 +156,19 @@ void Host::curl(std::string path, int port, long timeout){
             /* close the header file */
             fclose(pagefile);
             clock_gettime(0, &t_recived);
-            rtt = ((double)(t_recived.tv_nsec - t_sent.tv_nsec))/1000000;
+            if(!result){
+                std::clog<<"cannot get document"<< path << "from hosts" << _ip;
+            }
+            else{
+                double rtt = ((double)(t_recived.tv_nsec - t_sent.tv_nsec))/1000000;
+                PingRow ping_res = PingRow(rtt, std::time(nullptr));
+                ping_results.push_back(ping_res);
+            }
         }
         /* cleanup curl stuff */
         curl_easy_cleanup(curl);
-        PingRow ping_res = PingRow(rtt, std::time(nullptr));
-        ping_results.push_back(ping_res);
     }
     curl_global_cleanup();
-    if(!result){
-        std::clog<<"cannot get document"<< path << "from hosts" << _ip;
-    }
 }
 
 std::vector<std::string> Host::split_args(std::string nping_args){
