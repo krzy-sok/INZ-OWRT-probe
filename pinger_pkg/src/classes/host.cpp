@@ -113,11 +113,11 @@ static size_t write_cb(char *ptr, size_t size, size_t nmemb, void *stream)
 void Host::curl(std::string path, int port, long timeout){
     static const char *pagefilename = "/tmp/openwisp/curl-res";
     struct timespec t_sent, t_recived;
-    CURLcode result;
+    CURLcode init_result;
     CURL *curl;
 
-    result = curl_global_init(CURL_GLOBAL_ALL);
-    if(result != CURLE_OK) {
+    init_result = curl_global_init(CURL_GLOBAL_ALL);
+    if(init_result != CURLE_OK) {
         fprintf(stderr, "Could not init curl\n");
         return;
     }
@@ -152,17 +152,18 @@ void Host::curl(std::string path, int port, long timeout){
             curl_easy_setopt(curl, CURLOPT_WRITEDATA, pagefile);
 
             /* get it! */
-            result = curl_easy_perform(curl);
+            CURLcode result = curl_easy_perform(curl);
             /* close the header file */
             fclose(pagefile);
             clock_gettime(0, &t_recived);
-            if(!result){
-                std::clog<<"cannot get document"<< path << "from hosts" << _ip;
-            }
-            else{
+            std::clog<<"libcurl get result" << result <<std::endl;
+            if(result == CURLE_OK){
                 double rtt = ((double)(t_recived.tv_nsec - t_sent.tv_nsec))/1000000;
                 PingRow ping_res = PingRow(rtt, std::time(nullptr));
                 ping_results.push_back(ping_res);
+            }
+            else{
+                std::clog<<"cannot get document"<< path << "from hosts" << _ip;
             }
         }
         /* cleanup curl stuff */
