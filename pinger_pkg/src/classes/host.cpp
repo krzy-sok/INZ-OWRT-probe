@@ -29,48 +29,53 @@ Host::Host(std::string ip, std::string mac, std::string interface)
     dst.sin_family = AF_INET;
 }
 // TODO: modernize to c++ where possible
-void Host::ping(int sock)
+void Host::ping(int sock, int seq = 0)
 {
     struct timespec t_sent, t_recived;
     struct sockaddr_in src;
 
     unsigned char packet_buffer[PING_PKT_S] = {0};
     struct icmp_pkt *packet = (struct icmp_pkt *) packet_buffer;
+    socklen_t src_len = sizeof(struct sockaddr);
 
+    while (recvfrom(sock, packet_buffer, sizeof(packet_buffer), MSG_DONTWAIT, (struct sockaddr *)&src, &src_len) > 0)
+    {
+    }
     // compose packet
     // set header
     packet->hdr.type = ICMP_ECHO;
     packet->hdr.code = 0;
     packet->hdr.checksum = 0;
     packet->hdr.un.echo.id = getpid();
+    packet->hdr.un.echo.sequence = htons(seq);
 
     // set checksum
     packet->hdr.checksum = in_cksum((unsigned short *)packet, sizeof(packet_buffer), 0 );
 
-    clock_gettime(0, &t_sent);
+    clock_gettime(CLOCK_MONOTONIC, &t_sent);
 
-    // std::clog<<"packet type: "<< packet->hdr.type <<"  packet code: " << packet->hdr.code << std::endl;
-    int sent_res = sendto(sock, &packet_buffer, sizeof(packet_buffer), 0, (struct sockaddr *)&dst, sizeof(struct sockaddr));
+    int sent_res = sendto(sock, packet_buffer, sizeof(packet_buffer), 0, (struct sockaddr *)&dst, sizeof(struct sockaddr));
     if (sent_res <= 0){
         std::cerr << "Failed to send packet! "<< sent_res <<std::endl;
         std::cerr<<"socaddr: " << dst.sin_addr.s_addr <<std::endl;
         std::cerr<<"soc sin family: " << dst.sin_family <<std::endl;
-
         return;
     }
 
     // prepare buffer
     unsigned char reply_buffer[128];
     memset(reply_buffer, 0, sizeof(reply_buffer));
-    socklen_t src_len = sizeof(struct sockaddr);
+
     // receive reply
     int recv_res = recvfrom(sock, &reply_buffer, sizeof(reply_buffer), 0, (struct sockaddr *)&src, &src_len);
     if (recv_res <0){
         std::cerr<<"Failed to receive packet! "<< recv_res<< std::endl;
+        // if (errno == EAGAIN || errno == EWOULDBLOCK)
         return;
     }
-    clock_gettime(0, &t_recived);
-    double rtt = ((double)(t_recived.tv_nsec - t_sent.tv_nsec))/1000000;
+    clock_gettime(CLOCK_MONOTONIC, &t_recived);
+
+    double rtt = (double)(t_recived.tv_sec - t_sent.tv_sec)*1000 +  ((double)(t_recived.tv_nsec - t_sent.tv_nsec))/1000000;
 
     struct iphdr* ip_hdr = (struct iphdr *)reply_buffer;
     int ip_hdr_len = ip_hdr->ihl * 4;
@@ -98,7 +103,11 @@ void Host::ping(int sock)
         std::clog << PING_PKT_S <<" bytes from "<< _ip.data() << " rtt = " << rtt << " ms." << std::endl;
         return;
     }
-    // std::clog <<"recv.id: "<< icmp_hdr->un.echo.id << " sent.id: "<<packet->hdr.un.echo.id<<std::endl;
+    if(icmp_hdr->un.echo.sequence != packet->hdr.un.echo.sequence){
+        std::clog<< "Wrong sequence number" << std::endl << "  got: " << ntohs(icmp_hdr->un.echo.sequence) << std::endl
+            << "  expected: " <<ntohs(packet->hdr.un.echo.sequence) <<std::endl;
+        return;
+    }
 
     PingRow ping_res = PingRow(rtt, std::time(nullptr));
     ping_results.push_back(ping_res);
@@ -142,7 +151,6 @@ void Host::curl(std::string path, int port, long timeout){
 
         // /* send all data to this function */
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_cb);
-
 
         /* open the file */
         pagefile = fopen(pagefilename, "wb");

@@ -66,11 +66,15 @@ void set_socket_options(int sock){
     // set ttl
     if (setsockopt(sock, SOL_IP, IP_TTL, &ttl, sizeof(ttl)) != 0) {
         std::cerr <<"Setting socket options to TTL failed!" << std::endl;
-        throw std::runtime_error("filed tset socket options");
+        throw std::runtime_error("failed test socket options");
     } else {
         std::clog<<"Socket set to TTL..." << std::endl;
     }
     // set timeout on recive
+    if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv_timeout, sizeof tv_timeout)!=0){
+        std::cerr <<"Setting socket timeout failed!" << std::endl;
+        throw std::runtime_error("failed to set socket options");
+    }
     setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv_timeout, sizeof tv_timeout);
 }
 
@@ -98,8 +102,8 @@ int main(int argc, char* argv[])
     }
 
     int ping_count = atoi(argv[3]);
-    if(ping_count <= 0 || ping_count > 8){
-        std::clog<<"Ping count has invalid value: " << ping_count << ". Ping count must have values between 1 and 8" <<std::endl;
+    if(ping_count <= 0 || ping_count > 12){
+        std::clog<<"Ping count has invalid value: " << ping_count << ". Ping count must have values between 1 and 12" <<std::endl;
         return -1;
     }
 
@@ -163,7 +167,7 @@ int main(int argc, char* argv[])
                 hosts[i].curl(curl_path, curl_port, TIMEOUT_SEC);
             }
             else{
-                hosts[i].ping(sock);
+                hosts[i].ping(sock, c);
             }
         }
         if(is_flood){
