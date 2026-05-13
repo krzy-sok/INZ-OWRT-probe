@@ -21,7 +21,7 @@ class Host
 
     public:
         Host(std::string ip, std::string mac, std::string interface);
-        void ping(int sock);
+        void ping(int sock, int seq);
         void curl(std::string path, int port, long timeout);
         int startFlood(std::string nping_args);
         void stopFlood();
